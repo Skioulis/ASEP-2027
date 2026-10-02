@@ -1,7 +1,10 @@
 """Per-user progress, derived from answer attempts.
 
-A question's status for a user comes from their *latest* attempt on it:
-absent = unseen, True = last answered correctly, False = last answered wrongly.
+A question's status for a user comes from their *latest* attempt on it, judged
+against the *current* answer key: absent = unseen, True = last answered
+correctly, False = last answered wrongly. ``Attempt.is_correct`` is only the
+historical "correct at the time" value, so editing or re-importing a question's
+correct answer immediately updates everyone's progress.
 """
 
 from __future__ import annotations
@@ -13,13 +16,19 @@ from models import Attempt, Category, Question
 
 
 def latest_status(user_id: int) -> dict[str, bool]:
-    """question_id → whether the user's latest attempt on it was correct."""
+    """question_id → whether the user's latest attempt matches the current answer key.
+
+    Compares ``Attempt.chosen`` with ``Question.correct`` instead of reading the
+    stored ``Attempt.is_correct`` (what was true when the answer was given).
+    """
     latest_ids = (select(func.max(Attempt.id))
                   .where(Attempt.user_id == user_id)
                   .group_by(Attempt.question_id))
     rows = db.session.execute(
-        select(Attempt.question_id, Attempt.is_correct).where(Attempt.id.in_(latest_ids)))
-    return {qid: ok for qid, ok in rows}
+        select(Attempt.question_id, Attempt.chosen == Question.correct)
+        .join(Question, Question.id == Attempt.question_id)
+        .where(Attempt.id.in_(latest_ids)))
+    return {qid: bool(ok) for qid, ok in rows}
 
 
 def _pct(correct: int, answered: int) -> int | None:

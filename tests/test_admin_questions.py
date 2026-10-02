@@ -2,6 +2,7 @@ from sqlalchemy import func, select
 
 from extensions import db
 from models import Attempt, Question
+from stats import latest_status
 
 
 def _form(text="Νέα ερώτηση;", options=("α1", "β1", "γ1", "δ1"), correct=2):
@@ -44,6 +45,17 @@ def test_edit_question(admin_client, bank_loaded):
     question = db.session.get(Question, "alpha-1")
     assert (question.text, question.options, question.correct) == \
            ("Νέα ερώτηση;", ["α1", "β1", "γ1", "δ1"], 2)
+
+
+def test_editing_correct_answer_updates_user_progress(admin_client, bank_loaded, user):
+    # alpha-2's correct answer is 0, so choosing 1 was recorded as wrong.
+    db.session.add(Attempt(user_id=user.id, question_id="alpha-2", chosen=1,
+                           is_correct=False, mode="quiz"))
+    db.session.commit()
+    assert latest_status(user.id)["alpha-2"] is False
+    admin_client.post("/admin/questions/alpha-2", data=_form(
+        text="Πόσα άρθρα έχει το Σύνταγμα;", options=("120", "100", "90", "150"), correct=1))
+    assert latest_status(user.id)["alpha-2"] is True
 
 
 def test_edit_rejects_incomplete_form(admin_client, bank_loaded):
