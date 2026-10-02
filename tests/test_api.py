@@ -1,7 +1,15 @@
+import re
+
+import pytest
+from flask_migrate import upgrade
 from sqlalchemy import select
 
+import bank
+from app import create_app
 from extensions import db
 from models import Attempt
+from ratelimit import limiter
+from tests.conftest import FIXTURE_BANK, PASSWORD, FreshUserClient, make_user
 from views import api
 
 
@@ -117,3 +125,38 @@ def test_quiz_pool_login_checked_before_category(client, bank_loaded):
     response = client.get("/api/quiz?pool=unseen&category=nope")
     assert response.status_code == 401
     assert "error" in response.get_json()
+
+
+@pytest.fixture
+def csrf_app(tmp_path):
+    """Like the ``app`` fixture, but with CSRF protection switched on."""
+    application = create_app({
+        "SQLALCHEMY_DATABASE_URI": f"sqlite:///{tmp_path / 'csrf.db'}",
+        "TESTING": True,
+        "WTF_CSRF_ENABLED": True,
+        "DATA_DIR": FIXTURE_BANK,
+    })
+    application.test_client_class = FreshUserClient
+    limiter.reset()
+    with application.app_context():
+        upgrade()
+        bank.seed(FIXTURE_BANK)
+        make_user()
+        yield application
+        db.session.remove()
+
+
+def test_attempts_need_a_csrf_token_end_to_end(csrf_app):
+    client = csrf_app.test_client()
+    login_page = client.get("/login").get_data(as_text=True)
+    form_token = re.search(r'name="csrf_token" value="([^"]+)"', login_page).group(1)
+    response = client.post("/login", data={"username": "maria", "password": PASSWORD,
+                                           "csrf_token": form_token})
+    assert response.status_code == 302
+
+    index = client.get("/").get_data(as_text=True)
+    header_token = re.search(r'<meta name="csrf-token" content="([^"]+)"', index).group(1)
+    payload = {"question_id": "alpha-1", "chosen": 1, "mode": "quiz"}
+    assert client.post("/api/attempts", json=payload).status_code == 400
+    response = client.post("/api/attempts", json=payload, headers={"X-CSRFToken": header_token})
+    assert response.status_code == 201
