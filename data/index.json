@@ -1,0 +1,68 @@
+[
+ {
+  "name": "Συνταγματικό Δίκαιο",
+  "slug": "syntagmatiko-dikaio",
+  "count": 265,
+  "source": "1.ΣΥΝΤΑΓΜΑΤΙΚΟ ΔΙΚΑΙΟ.pdf"
+ },
+ {
+  "name": "Διοικητικό Δίκαιο",
+  "slug": "dioikitiko-dikaio",
+  "count": 303,
+  "source": "2.ΔΙΟΙΚΗΤΙΚΟ ΔΙΚΑΙΟ.pdf"
+ },
+ {
+  "name": "Ευρωπαϊκοί Θεσμοί και Δίκαιο",
+  "slug": "eyropaikoi-thesmoi-kai-dikaio",
+  "count": 189,
+  "source": "3.ΕΥΡΩΠΑΪΚΟΙ ΘΕΣΜΟΙ ΚΑΙ ΔΙΚΑΙΟ.pdf"
+ },
+ {
+  "name": "Οικονομικές Επιστήμες",
+  "slug": "oikonomikes-epistimes",
+  "count": 334,
+  "source": "4.ΟΙΚΟΝΟΜΙΚΕΣ ΕΠΙΣΤΗΜΕΣ.pdf"
+ },
+ {
+  "name": "Πληροφορική και Ψηφιακή Διακυβέρνηση",
+  "slug": "pliroforiki-kai-psifiaki-diakyvernisi",
+  "count": 257,
+  "source": "5.ΠΛΗΡΟΦΟΡΙΚΗ ΚΑΙ ΨΗΦΙΑΚΗ ΔΙΑΚΥΒΕΡΝΗΣΗ.pdf"
+ },
+ {
+  "name": "Σύγχρονη Ιστορία της Ελλάδος (1875-σήμερα)",
+  "slug": "sygchroni-istoria-tis-ellados-1875-simera",
+  "count": 144,
+  "source": "6.ΣΥΓΧΡΟΝΗ ΙΣΤΟΡΙΑ ΤΗΣ ΕΛΛΑΔΟΣ.pdf"
+ },
+ {
+  "name": "Κώδικας Κατάστασης Πολιτικών Διοικητικών Υπαλλήλων και Υπαλλήλων Ν.Π.Δ.Δ.",
+  "slug": "kodikas-katastasis-politikon-dioikitikon-ypallilon-kai-ypallilon-npdd",
+  "count": 121,
+  "source": "7.ΚΩΔΙΚΑΣ ΚΑΤΑΣΤΑΣΗΣ ΠΟΛΙΤΙΚΩΝ ΔΙΟΙΚΗΤ.ΥΠΑΛΛΗΛΩΝ ΚΑΙ ΥΠΑΛΛΗΛΩΝ ΝΠΔΔ.pdf"
+ },
+ {
+  "name": "Γενικός Κανονισμός για την Προστασία των Δεδομένων (GDPR)",
+  "slug": "genikos-kanonismos-gia-tin-prostasia-ton-dedomenon-gdpr",
+  "count": 30,
+  "source": "8.ΓΕΝΙΚΟΣ ΚΑΝΟΝΙΣΜΟΣ ΓΙΑ ΤΗΝ ΠΡΟΣΤΑΣΙΑ ΔΕΔΟΜΕΝΩΝ GDPR.pdf"
+ },
+ {
+  "name": "Διοίκηση Επιχειρήσεων και Οργανισμών",
+  "slug": "dioikisi-epicheiriseon-kai-organismon",
+  "count": 108,
+  "source": "9.ΔΙΟΙΚΗΣΗ ΕΠΙΧΕΙΡΗΣΕΩΝ ΚΑΙ ΟΡΓΑΝΙΣΜΩΝ.pdf"
+ },
+ {
+  "name": "Διοίκηση Ανθρώπινου Δυναμικού",
+  "slug": "dioikisi-anthropinoy-dynamikoy",
+  "count": 151,
+  "source": "10.ΔΙΟΙΚΗΣΗ ΑΝΘΡΩΠΙΝΟΥ ΔΥΝΑΜΙΚΟΥ.pdf"
+ },
+ {
+  "name": "Κώδικας συμπεριφοράς δημοσίων Υπαλλήλων",
+  "slug": "kodikas-symperiforas-dimosion-ypallilon",
+  "count": 86,
+  "source": "11.ΚΩΔΙΚΑΣ ΣΥΜΠΕΡΙΦΟΡΑΣ ΔΗΜΟΣΙΩΝ ΥΠΑΛΛΗΛΩΝ.pdf"
+ }
+]
