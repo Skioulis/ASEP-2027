@@ -69,14 +69,15 @@ def questions():
 
 @bp.get("/quiz")
 def quiz():
-    category = _category_arg()
     pool = request.args.get("pool", "all")
     if pool not in POOLS:
         _fail(400, "Άγνωστο σύνολο ερωτήσεων.")
+    if pool != "all":
+        _require_login()
+    category = _category_arg()
     size = min(max(request.args.get("size", 25, type=int), 1), 100)
     candidates = db.session.scalars(_questions(category)).all()
     if pool != "all":
-        _require_login()
         status = latest_status(current_user.id)
         if pool == "unseen":
             candidates = [q for q in candidates if q.id not in status]
@@ -89,7 +90,9 @@ def quiz():
 @bp.post("/attempts")
 def record_attempt():
     _require_login()
-    data = request.get_json(silent=True) or {}
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        _fail(400, "Μη έγκυρη απάντηση.")
     qid = data.get("question_id")
     question = db.session.get(Question, qid) if isinstance(qid, str) else None
     if question is None:

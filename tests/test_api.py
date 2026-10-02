@@ -84,3 +84,27 @@ def test_attempt_validation(user_client, bank_loaded):
     assert _answer(user_client, "alpha-1", 4).status_code == 400
     assert _answer(user_client, "alpha-1", True).status_code == 400
     assert _answer(user_client, "alpha-1", 0, mode="exam").status_code == 400
+
+
+def test_attempt_rejects_non_object_body(user_client, bank_loaded):
+    # Test with array body
+    response = user_client.post("/api/attempts", json=[1])
+    assert response.status_code == 400
+    assert "error" in response.get_json()
+
+    # Test with string body
+    response = user_client.post("/api/attempts", json="x")
+    assert response.status_code == 400
+    assert "error" in response.get_json()
+
+    # Test with raw JSON string that is not an object
+    response = user_client.post("/api/attempts", data="not json", content_type="application/json")
+    assert response.status_code == 400
+    assert "error" in response.get_json()
+
+
+def test_quiz_pool_login_checked_before_category(client, bank_loaded):
+    # Guest should get 401 for restricted pools before getting 404 for unknown category
+    response = client.get("/api/quiz?pool=unseen&category=nope")
+    assert response.status_code == 401
+    assert "error" in response.get_json()
