@@ -53,9 +53,9 @@ def create_app(config: dict | None = None) -> Flask:
     # Import models so their tables register with the metadata.
     import models  # noqa: F401
     from cli import register_cli
-    from views import api, auth, main
+    from views import admin, api, auth, main
 
-    for blueprint in (main.bp, auth.bp, api.bp):
+    for blueprint in (main.bp, auth.bp, api.bp, admin.bp):
         app.register_blueprint(blueprint)
     register_cli(app)
 

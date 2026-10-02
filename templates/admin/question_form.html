@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}{{ question.id if question else 'Νέα ερώτηση' }} — Διαχείριση{% endblock %}
+{% block content %}
+<div class="container py-4" style="max-width: 860px">
+  {% include "admin/_nav.html" %}
+  <a href="{{ url_for('admin.questions', category=category.slug) }}" class="small"><i class="fas fa-arrow-left me-1"></i>{{ category.name }}</a>
+  <h4 class="mt-2 mb-3">{{ ("Ερώτηση " ~ question.id) if question else "Νέα ερώτηση" }}</h4>
+
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-3">
+      <label class="form-label" for="text">Κείμενο ερώτησης</label>
+      <textarea class="form-control" id="text" name="text" rows="4" required>{{ values.text }}</textarea>
+    </div>
+    {% for i in range(4) %}
+      <div class="input-group mb-2">
+        <div class="input-group-text">
+          <input class="form-check-input mt-0" type="radio" name="correct" value="{{ i }}" id="correct{{ i }}"
+                 {{ 'checked' if values.correct == i }} aria-label="Σωστή απάντηση {{ 'αβγδ'[i] }}">
+          <label class="ms-2 fw-bold" for="correct{{ i }}">{{ "αβγδ"[i] }}.</label>
+        </div>
+        <textarea class="form-control" name="a{{ i }}" rows="2" required>{{ values.options[i] }}</textarea>
+      </div>
+    {% endfor %}
+    <div class="form-text mb-3">Επιλέξτε με το κουμπί την σωστή απάντηση.</div>
+    <button class="btn btn-primary" type="submit"><i class="fas fa-save me-1"></i>Αποθήκευση</button>
+  </form>
+
+  {% if question %}
+  <form method="post" action="{{ url_for('admin.delete_question', qid=question.id) }}" class="mt-4"
+        onsubmit="return confirm('Διαγραφή της ερώτησης {{ question.id }} και όλων των απαντήσεων χρηστών σε αυτήν;')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-outline-danger btn-sm" type="submit"><i class="fas fa-trash me-1"></i>Διαγραφή ερώτησης</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

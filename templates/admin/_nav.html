@@ -1,0 +1,10 @@
+{% set tabs = [("admin.questions", "fa-question-circle", "Ερωτήσεις")] %}
+<ul class="nav nav-tabs mb-4">
+  {% for endpoint, icon, label in tabs %}
+    <li class="nav-item">
+      <a class="nav-link {{ 'active' if request.endpoint == endpoint }}" href="{{ url_for(endpoint) }}">
+        <i class="fas {{ icon }} me-1"></i>{{ label }}
+      </a>
+    </li>
+  {% endfor %}
+</ul>
