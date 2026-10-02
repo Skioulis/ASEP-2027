@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from urllib.parse import urlsplit
 
 from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_user, logout_user
@@ -25,8 +26,16 @@ def _client_ip() -> str:
 
 def _safe_next(target: str | None) -> str:
     """Only follow same-site relative paths after login (no open redirects)."""
-    if target and target.startswith("/") and not target.startswith("//"):
-        return target
+    if (
+        target
+        and target.startswith("/")
+        and not target.startswith("//")
+        and "\\" not in target
+        and not any(ord(c) < 32 or c == "\x7f" for c in target)
+    ):
+        parts = urlsplit(target)
+        if not parts.scheme and not parts.netloc:
+            return target
     return url_for("main.index")
 
 

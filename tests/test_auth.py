@@ -22,6 +22,32 @@ def test_rate_limiter_window():
     assert limiter.hit("other", 2, 60, now=2)
 
 
+def test_rate_limiter_caps_key_length():
+    limiter = RateLimiter()
+    # Junk keys sharing their first MAX_KEY_LENGTH characters share one bucket.
+    assert limiter.hit("a" * 128 + "x" * 10_000, 1, 60, now=0)
+    assert not limiter.hit("a" * 128 + "y" * 10_000, 1, 60, now=1)
+    assert len(limiter) == 1
+
+
+def test_rate_limiter_prunes_expired_keys():
+    limiter = RateLimiter(prune_every=1)
+    for i in range(10):
+        assert limiter.hit(f"k{i}", 5, 60, now=i)
+    assert len(limiter) == 10          # all still inside the window
+    assert limiter.hit("late", 5, 60, now=1000)
+    assert len(limiter) == 1           # the ten stale keys are gone
+
+
+def test_rate_limiter_keeps_keys_inside_window():
+    limiter = RateLimiter(prune_every=1)
+    assert limiter.hit("old", 5, 60, now=0)
+    assert limiter.hit("recent", 5, 60, now=50)
+    assert limiter.hit("new", 5, 60, now=100)   # "old" expired, "recent" has not
+    assert len(limiter) == 2
+    assert not limiter.hit("recent", 1, 60, now=101)   # its hit was kept
+
+
 def test_register_creates_lowercase_user_and_logs_in(client):
     response = _register(client)
     assert response.status_code == 302
@@ -78,6 +104,28 @@ def test_login_follows_only_local_next(client, user):
     client.post("/logout")
     assert client.post("/login?next=//evil.example", data={"username": "maria", "password": PASSWORD}
                        ).headers["Location"] == "/"
+
+
+@pytest.mark.parametrize("target", [
+    "//evil.example",
+    "///evil.example",
+    "/%09/evil.example",   # tab: stripped by Werkzeug, leaving //evil.example
+    "/%0a/x",              # newline: redirect() would raise ValueError
+    "/%0d/x",
+    "/%5Cevil.example",    # backslash: browsers treat it as /
+    "http://evil.example",
+    "https://evil.example/x",
+])
+def test_login_rejects_unsafe_next(client, user, target):
+    response = client.post(f"/login?next={target}", data={"username": "maria", "password": PASSWORD})
+    assert response.status_code == 302
+    assert response.headers["Location"] == "/"
+
+
+def test_login_keeps_local_next_with_query_string(client, user):
+    response = client.post("/login?next=%2F%3Fcategory%3Dalpha%26start%3Dquiz",
+                           data={"username": "maria", "password": PASSWORD})
+    assert response.headers["Location"] == "/?category=alpha&start=quiz"
 
 
 def test_login_is_rate_limited(client, app, user):
