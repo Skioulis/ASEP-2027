@@ -1,5 +1,5 @@
-"""Test fixtures: a throwaway migrated database per test and a small question
-bank (tests/fixtures/bank)."""
+"""Test fixtures: a throwaway migrated database per test, a small question
+bank (tests/fixtures/bank), and a helper to create users."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from app import create_app
 from extensions import db
 
 FIXTURE_BANK = os.path.join(os.path.dirname(__file__), "fixtures", "bank")
+PASSWORD = "secret-pass"
 
 
 @pytest.fixture
@@ -38,3 +39,17 @@ def bank_loaded(app):
     """Seed the 5-question fixture bank (categories alpha: 3, beta: 2)."""
     import bank
     bank.seed(FIXTURE_BANK)
+
+
+def make_user(username="maria", password=PASSWORD, is_admin=False, active=True):
+    from models import User
+    user = User(username=username, is_admin=is_admin, active=active)
+    user.set_password(password)
+    db.session.add(user)
+    db.session.commit()
+    return user
+
+
+@pytest.fixture
+def user(app):
+    return make_user()
