@@ -6,5 +6,8 @@ venv/
 .pytest_cache/
 instance/
 *.db
+*.db-wal
+*.db-shm
+*.db-journal
 .idea/
 .~lock.*#

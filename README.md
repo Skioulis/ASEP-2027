@@ -37,15 +37,16 @@ sudo tailscale funnel reset       # stop publishing
 Funnel must be enabled for your tailnet (the first run prints a link to the
 admin console if it is not).
 
-**Check that visitor IPs arrive.** After turning Funnel on, open the site from
-outside (for example a phone on mobile data) and look at the access lines:
-
-```bash
-docker compose logs web
-```
-
-The first field of each line must be the visitor's real IP. If it is `-` or a
-local address, the login/register rate limits cannot tell visitors apart.
+**Check that visitor IPs arrive.** After turning Funnel on:
+1. Load the site from a phone on mobile data; check the access log that the
+   raw `X-Forwarded-For` header ends with the phone's public IP.
+2. Run `curl -H 'X-Forwarded-For: 203.0.113.9' https://<machine>.<tailnet>.ts.net/`.
+   Check the logged header value: the LAST entry must be your real IP, not
+   203.0.113.9. (ProxyFix with `x_for=1` in `app.py` trusts only the last entry.)
+   If it logs just `203.0.113.9`, Funnel is passing client headers through;
+   set `x_for=0` instead.
+3. If the logged IP is `-` or a local address, all visitors share one IP for
+   rate limiting. Check your Funnel and proxy chain.
 
 ### Upgrade
 

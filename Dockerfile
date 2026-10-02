@@ -14,8 +14,9 @@ COPY . .
 
 # Run unprivileged. /data/db is the mount point for the persistent volume
 # holding the SQLite database; a new named volume inherits its ownership.
-RUN groupadd --system app \
-    && useradd --system --gid app --no-create-home --shell /usr/sbin/nologin app \
+# Fixed UID keeps the existing db volume writable across rebuilds.
+RUN groupadd --system --gid 10001 app \
+    && useradd --system --uid 10001 --gid app --no-create-home --shell /usr/sbin/nologin app \
     && mkdir -p /data/db && chown app:app /data/db \
     && chmod +x docker/entrypoint.sh
 

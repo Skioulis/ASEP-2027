@@ -18,6 +18,11 @@ services:
     volumes:
       - db_data:/data/db
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
 
 volumes:
   db_data:   # SQLite database (users, progress, edited questions)
