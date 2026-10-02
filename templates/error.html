@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}{{ code }} — ΑΣΕΠ 2027{% endblock %}
+{% block content %}
+{% set texts = {
+  403: "Δεν έχετε πρόσβαση σε αυτή τη σελίδα.",
+  404: "Η σελίδα δεν βρέθηκε.",
+  500: "Κάτι πήγε στραβά. Δοκιμάστε ξανά σε λίγο.",
+} %}
+<div class="container py-5 text-center">
+  <h1 class="display-4 text-primary">{{ code }}</h1>
+  <p class="lead">{{ texts.get(code, texts[500]) }}</p>
+  <a class="btn btn-primary" href="{{ url_for('main.index') }}"><i class="fas fa-home me-1"></i>Αρχική</a>
+</div>
+{% endblock %}

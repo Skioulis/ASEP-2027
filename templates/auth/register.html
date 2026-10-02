@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Εγγραφή — ΑΣΕΠ 2027{% endblock %}
+{% block content %}
+<div class="container py-5" style="max-width: 420px">
+  <h3 class="mb-2"><i class="fas fa-user-plus me-2 text-primary"></i>Εγγραφή</h3>
+  <p class="text-muted mb-4">Με λογαριασμό αποθηκεύεται η πρόοδός σας: στατιστικά, λάθη και αναπάντητες ερωτήσεις.</p>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-3">
+      <label class="form-label" for="username">Όνομα χρήστη</label>
+      <input class="form-control" id="username" name="username" value="{{ username }}" required autofocus
+             pattern="[A-Za-z0-9_.\-]{3,32}" autocomplete="username">
+      <div class="form-text">3–32 λατινικοί χαρακτήρες, ψηφία ή . _ -</div>
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="password">Κωδικός</label>
+      <input class="form-control" id="password" name="password" type="password" minlength="8" required autocomplete="new-password">
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="confirm">Επιβεβαίωση κωδικού</label>
+      <input class="form-control" id="confirm" name="confirm" type="password" minlength="8" required autocomplete="new-password">
+    </div>
+    <button class="btn btn-primary w-100" type="submit">Δημιουργία λογαριασμού</button>
+  </form>
+  <p class="mt-3 text-center">Έχετε ήδη λογαριασμό; <a href="{{ url_for('auth.login') }}">Σύνδεση</a></p>
+</div>
+{% endblock %}

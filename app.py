@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 
-from flask import Flask
+from flask import Flask, render_template
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from extensions import csrf, db, login_manager, migrate
@@ -53,8 +53,18 @@ def create_app(config: dict | None = None) -> Flask:
     # Import models so their tables register with the metadata.
     import models  # noqa: F401
     from cli import register_cli
+    from views import auth, main
 
+    for blueprint in (main.bp, auth.bp):
+        app.register_blueprint(blueprint)
     register_cli(app)
+
+    @app.errorhandler(403)
+    @app.errorhandler(404)
+    @app.errorhandler(500)
+    def error_page(error):
+        code = getattr(error, "code", 500)
+        return render_template("error.html", code=code), code
 
     return app
 

@@ -1,0 +1,76 @@
+/* Look carried over from the static site (index.html <style>). */
+body { background-color: #f8f9fa; display: flex; flex-direction: column; min-height: 100vh; }
+footer { margin-top: auto; }
+
+.hero {
+  background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+  color: white;
+  padding: 2rem 0 1.5rem;
+}
+
+.mode-card {
+  cursor: pointer;
+  transition: transform .15s, box-shadow .15s;
+  border: 2px solid transparent;
+}
+.mode-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,.12); }
+
+.question-card {
+  border-left: 5px solid #0d6efd;
+  margin-bottom: 1.25rem;
+}
+
+/* Question text may contain line breaks (tables, lists, poems). */
+.qtext { white-space: pre-line; }
+
+/* Browse mode */
+.answer-btn {
+  text-align: left;
+  background: white;
+  border: 1px solid #dee2e6;
+  transition: background .15s, border-color .15s;
+}
+.answer-btn:hover:not(:disabled) { background: #f0f4ff; border-color: #0d6efd; }
+.answer-btn.correct  { background: #d1e7dd; border-color: #0f5132; color: #0f5132; font-weight: 600; }
+.answer-btn.wrong    { background: #f8d7da; border-color: #842029; color: #842029; }
+.answer-btn.revealed { background: #d1e7dd; border-color: #0f5132; color: #0f5132; }
+.answer-btn:disabled { opacity: 1; }
+
+/* Quiz mode */
+.quiz-option {
+  text-align: left;
+  background: white;
+  border: 2px solid #dee2e6;
+  border-radius: 8px;
+  padding: .75rem 1rem;
+  margin-bottom: .5rem;
+  width: 100%;
+  transition: background .15s, border-color .15s;
+}
+.quiz-option:hover:not(:disabled) { background: #f0f4ff; border-color: #0d6efd; }
+.quiz-option.correct { border-color: #198754; background: #d1e7dd; color: #0f5132; font-weight: 600; }
+.quiz-option.wrong   { border-color: #dc3545; background: #f8d7da; color: #842029; }
+
+.progress-bar-quiz { height: 8px; border-radius: 4px; }
+
+.score-circle {
+  width: 140px; height: 140px;
+  border-radius: 50%;
+  border: 8px solid;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  margin: 0 auto 1.5rem;
+  font-size: 2rem; font-weight: 700;
+}
+
+#categoryFilter { max-width: 340px; }
+#poolFilter { max-width: 240px; }
+
+.badge-category { font-size: .72rem; }
+
+footer {
+  background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+  color: white;
+  padding: 2rem 0 1.5rem;
+}
+footer a { color: #cfe2ff; }
