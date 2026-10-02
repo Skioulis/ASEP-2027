@@ -1,0 +1,77 @@
+import os
+
+import pytest
+from sqlalchemy import func, select
+
+import bank
+from extensions import db
+from models import Category, Question
+from tests.conftest import FIXTURE_BANK
+
+REAL_DATA = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
+GOOD = {"id": "alpha-1", "n": 1, "q": "Ερώτηση;", "a": ["α", "β", "γ", "δ"], "c": 0}
+
+
+def test_validate_accepts_good_items():
+    assert bank.validate_items([GOOD], "alpha") == []
+
+
+def test_validate_n_is_optional():
+    item = {k: v for k, v in GOOD.items() if k != "n"}
+    assert bank.validate_items([item], "alpha") == []
+
+
+def test_validate_rejects_non_list():
+    assert len(bank.validate_items({"id": "x"}, "alpha")) == 1
+
+
+def test_validate_reports_every_problem():
+    items = [
+        GOOD,
+        dict(GOOD),                                   # duplicate id
+        dict(GOOD, id="beta-1"),                      # wrong prefix
+        dict(GOOD, id="alpha-3", a=["α", "β", "γ"]),  # 3 options
+        dict(GOOD, id="alpha-4", c=4),                # c out of range
+        dict(GOOD, id="alpha-5", q="  "),             # empty question
+        dict(GOOD, id="alpha-6", c=True),             # bool is not an index
+    ]
+    problems = bank.validate_items(items, "alpha")
+    assert len(problems) == 6
+    assert "διπλό id" in problems[0]
+    assert "alpha-" in problems[1]
+
+
+def test_read_bank_returns_categories_in_index_order():
+    data = bank.read_bank(FIXTURE_BANK)
+    assert [c["slug"] for c in data] == ["alpha", "beta"]
+    assert [len(c["items"]) for c in data] == [3, 2]
+
+
+def test_real_extracted_bank_is_valid():
+    data = bank.read_bank(REAL_DATA)
+    assert len(data) == 11
+    assert sum(len(c["items"]) for c in data) == 1988
+
+
+def test_read_bank_raises_with_all_problems(tmp_path):
+    (tmp_path / "categories").mkdir()
+    (tmp_path / "index.json").write_text('[{"name": "Άλφα", "slug": "alpha", "count": 1}]')
+    (tmp_path / "categories" / "alpha.json").write_text('[{"id": "zzz", "q": "", "a": [], "c": 9}]')
+    with pytest.raises(bank.BankError) as excinfo:
+        bank.read_bank(str(tmp_path))
+    assert len(excinfo.value.problems) == 4
+
+
+def test_seed_loads_once(app):
+    assert bank.seed(FIXTURE_BANK) == 5
+    assert bank.seed(FIXTURE_BANK) == 0
+    assert db.session.scalar(select(func.count()).select_from(Question)) == 5
+    alpha = db.session.scalar(select(Category).filter_by(slug="alpha"))
+    assert [q.id for q in alpha.questions] == ["alpha-1", "alpha-2", "alpha-3"]
+    assert alpha.questions[1].options[0] == "120"
+
+
+def test_seed_cli_command(app):
+    runner = app.test_cli_runner()
+    assert "Seeded 5 questions." in runner.invoke(args=["seed"]).output
+    assert "already loaded" in runner.invoke(args=["seed"]).output

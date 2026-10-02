@@ -52,6 +52,9 @@ def create_app(config: dict | None = None) -> Flask:
 
     # Import models so their tables register with the metadata.
     import models  # noqa: F401
+    from cli import register_cli
+
+    register_cli(app)
 
     return app
 

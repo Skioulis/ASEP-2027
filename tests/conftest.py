@@ -1,12 +1,17 @@
-"""Test fixtures: a throwaway migrated database per test."""
+"""Test fixtures: a throwaway migrated database per test and a small question
+bank (tests/fixtures/bank)."""
 
 from __future__ import annotations
+
+import os
 
 import pytest
 from flask_migrate import upgrade
 
 from app import create_app
 from extensions import db
+
+FIXTURE_BANK = os.path.join(os.path.dirname(__file__), "fixtures", "bank")
 
 
 @pytest.fixture
@@ -15,6 +20,7 @@ def app(tmp_path):
         "SQLALCHEMY_DATABASE_URI": f"sqlite:///{tmp_path / 'test.db'}",
         "TESTING": True,
         "WTF_CSRF_ENABLED": False,
+        "DATA_DIR": FIXTURE_BANK,
     })
     with application.app_context():
         upgrade()
@@ -25,3 +31,10 @@ def app(tmp_path):
 @pytest.fixture
 def client(app):
     return app.test_client()
+
+
+@pytest.fixture
+def bank_loaded(app):
+    """Seed the 5-question fixture bank (categories alpha: 3, beta: 2)."""
+    import bank
+    bank.seed(FIXTURE_BANK)
