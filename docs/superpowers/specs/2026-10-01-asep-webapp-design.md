@@ -1,7 +1,7 @@
 # ASEP 2027 Web App — Design
 
 **Date:** 2026-10-01
-**Status:** Draft — awaiting user review
+**Status:** Approved — plan in `docs/superpowers/plans/2026-10-02-asep-webapp.md`
 
 ## Goal
 
@@ -40,12 +40,13 @@ confirmed against the PDF), 6 new/reworded.
 
 ```
 ASEP-2027/
-  app.py              create_app() factory, registers blueprints, ProxyFix
-  config.py           settings from env vars
-  extensions.py       db, migrate, login_manager, csrf, limiter
+  app.py              create_app() factory, settings from env vars, blueprints, ProxyFix
+  extensions.py       db, migrate, login_manager, csrf
   models.py           Category, Question, User, Attempt
   bank.py             load/validate/export question JSON (seed + admin import/export)
   stats.py            per-user progress queries
+  ratelimit.py        small in-memory limiter for login/register (no extra dependency)
+  cli.py              flask seed, flask ensure-admin
   views/
     main.py           page routes: home, quiz, browse, stats
     api.py            JSON API used by static/app.js
@@ -68,8 +69,9 @@ ASEP-2027/
 - **Category** — `id`, `slug` (unique), `name`, `position`
 - **Question** — `id` (string PK, `<slug>-<n>`), `category_id`, `number`, `text`,
   `options` (JSON list of 4 strings), `correct` (0–3), `updated_at`
-- **User** — `id`, `username` (unique, 3–32 chars `[A-Za-z0-9_.-]`), `password_hash`
-  (werkzeug), `is_admin`, `is_active`, `created_at`, `last_login_at`
+- **User** — `id`, `username` (unique, stored lowercase, 3–32 chars `[a-z0-9_.-]`),
+  `password_hash` (werkzeug), `is_admin`, `active` (exposed to Flask-Login as
+  `is_active`), `created_at`, `last_login_at`
 - **Attempt** — `id`, `user_id`, `question_id`, `chosen` (0–3), `is_correct`,
   `mode` (`quiz` | `browse`), `created_at`. Deleting a question or user cascades.
 
@@ -93,7 +95,7 @@ unseen (no attempts) / correct / wrong.
 ### Auth
 - Register (username, password ≥ 8 chars, confirm), login, logout via Flask-Login.
 - Disabled users cannot log in. Login and register are rate-limited per IP
-  (Flask-Limiter, in-memory) to blunt brute force/spam on the public URL.
+  (`ratelimit.py`, in-memory, per process) to blunt brute force/spam on the public URL.
 
 ### Admin (`is_admin` only; 403 otherwise)
 - **Questions** — search by text/category, edit text/options/correct answer, add a
