@@ -22,6 +22,10 @@ the entrypoint applies migrations, loads `data/` if the database has no
 questions yet, and creates/updates the admin account from `ADMIN_USERNAME` /
 `ADMIN_PASSWORD`.
 
+gunicorn runs `WEB_CONCURRENCY` worker processes (default 3), each with
+`GUNICORN_THREADS` threads (default 8); both are set in `docker-compose.yaml`.
+Every request is logged to `docker compose logs web`.
+
 ### Expose it with Tailscale Funnel
 
 ```bash
