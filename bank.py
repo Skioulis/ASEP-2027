@@ -12,14 +12,17 @@ import; defaults to the item's 1-based position), ``q`` the question text,
 
 from __future__ import annotations
 
+import io
 import json
 import os
 import re
+import zipfile
+from dataclasses import dataclass, field
 
 from sqlalchemy import func, select
 
 from extensions import db
-from models import Category, Question
+from models import Attempt, Category, Question
 
 # Question ids end up in inline JS/HTML on the browse page: keep them boring.
 ID_RE = re.compile(r"[a-z0-9._-]+")
@@ -105,3 +108,82 @@ def seed(data_dir: str) -> int:
             total += 1
     db.session.commit()
     return total
+
+
+def category_items(category: Category) -> list[dict]:
+    """A category's questions in the on-disk item format."""
+    return [{"id": q.id, "n": q.number, "q": q.text, "a": list(q.options), "c": q.correct}
+            for q in category.questions]
+
+
+def export_zip() -> bytes:
+    """The whole bank as a zip of index.json + categories/<slug>.json."""
+    categories = db.session.scalars(select(Category).order_by(Category.position)).all()
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        index = []
+        for category in categories:
+            items = category_items(category)
+            archive.writestr(f"categories/{category.slug}.json",
+                             json.dumps(items, ensure_ascii=False, indent=1))
+            index.append({"name": category.name, "slug": category.slug, "count": len(items)})
+        archive.writestr("index.json", json.dumps(index, ensure_ascii=False, indent=1))
+    return buffer.getvalue()
+
+
+@dataclass
+class ImportPlan:
+    """What importing a file into a category would do (or did)."""
+    added: list[str] = field(default_factory=list)
+    changed: list[str] = field(default_factory=list)
+    removed: list[str] = field(default_factory=list)
+    unchanged: int = 0
+    attempts_removed: int = 0
+
+
+def plan_import(category: Category, items: object) -> ImportPlan:
+    """Diff ``items`` against the category by id. Raises BankError if invalid."""
+    problems = validate_items(items, category.slug)
+    if problems:
+        raise BankError(problems)
+    existing = {q.id: q for q in category.questions}
+    plan = ImportPlan()
+    for pos, item in enumerate(items, 1):
+        question = existing.get(item["id"])
+        if question is None:
+            plan.added.append(item["id"])
+        elif ((question.number, question.text, list(question.options), question.correct)
+              != (item.get("n", pos), item["q"], list(item["a"]), item["c"])):
+            plan.changed.append(item["id"])
+        else:
+            plan.unchanged += 1
+    if plan.added:
+        clash = db.session.scalars(select(Question.id).where(Question.id.in_(plan.added))).all()
+        if clash:
+            raise BankError([f"Το id {qid} υπάρχει ήδη σε άλλη κατηγορία." for qid in clash])
+    incoming = {item["id"] for item in items}
+    plan.removed = [qid for qid in existing if qid not in incoming]
+    if plan.removed:
+        plan.attempts_removed = db.session.scalar(
+            select(func.count()).select_from(Attempt)
+            .where(Attempt.question_id.in_(plan.removed)))
+    return plan
+
+
+def apply_import(category: Category, items: list[dict]) -> ImportPlan:
+    """Replace the category's questions with ``items``; attempts on removed ones are deleted."""
+    plan = plan_import(category, items)
+    existing = {q.id: q for q in category.questions}
+    for qid in plan.removed:
+        db.session.delete(existing[qid])
+    for pos, item in enumerate(items, 1):
+        question = existing.get(item["id"])
+        if question is None:
+            db.session.add(_new_question(item, pos, category))
+        else:
+            question.number = item.get("n", pos)
+            question.text = item["q"]
+            question.options = list(item["a"])
+            question.correct = item["c"]
+    db.session.commit()
+    return plan

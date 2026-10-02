@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Προεπισκόπηση εισαγωγής — Διαχείριση{% endblock %}
+{% block content %}
+<div class="container py-4" style="max-width: 860px">
+  {% include "admin/_nav.html" %}
+  <h4 class="mb-3">Προεπισκόπηση: {{ category.name }}</h4>
+
+  <ul class="list-group mb-3">
+    <li class="list-group-item d-flex justify-content-between">Νέες ερωτήσεις <span class="badge bg-success">{{ plan.added|length }}</span></li>
+    <li class="list-group-item d-flex justify-content-between">Αλλαγμένες ερωτήσεις <span class="badge bg-primary">{{ plan.changed|length }}</span></li>
+    <li class="list-group-item d-flex justify-content-between">Αμετάβλητες <span class="badge bg-secondary">{{ plan.unchanged }}</span></li>
+    <li class="list-group-item d-flex justify-content-between">Ερωτήσεις που θα διαγραφούν <span class="badge bg-danger">{{ plan.removed|length }}</span></li>
+  </ul>
+  {% if plan.attempts_removed %}
+    <div class="alert alert-warning"><i class="fas fa-exclamation-triangle me-1"></i>
+      Θα διαγραφούν επίσης {{ plan.attempts_removed }} απαντήσεις χρηστών στις ερωτήσεις που αφαιρούνται.</div>
+  {% endif %}
+  {% if plan.removed %}
+    <details class="mb-3"><summary>Ερωτήσεις προς διαγραφή</summary>
+      <div class="small"><code>{{ plan.removed|join(", ") }}</code></div></details>
+  {% endif %}
+
+  <form method="post" class="d-flex gap-2">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="category" value="{{ category.slug }}">
+    <input type="hidden" name="confirm" value="1">
+    <textarea name="payload" hidden>{{ payload }}</textarea>
+    <button class="btn btn-danger" type="submit"><i class="fas fa-check me-1"></i>Επιβεβαίωση εισαγωγής</button>
+    <a class="btn btn-outline-secondary" href="{{ url_for('admin.import_bank') }}">Ακύρωση</a>
+  </form>
+</div>
+{% endblock %}

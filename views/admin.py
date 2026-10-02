@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import io
+import json
 import unicodedata
 
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user
 from sqlalchemy import func, select
 
+import bank
 from extensions import db, login_manager
 from models import Category, Question
 
@@ -131,3 +134,48 @@ def delete_question(qid: str):
     db.session.commit()
     flash(f"Η ερώτηση {qid} διαγράφηκε.", "success")
     return redirect(url_for("admin.questions", category=slug))
+
+
+# ── Import / export ──────────────────────────────────────────────────────────
+
+@bp.get("/export")
+def export():
+    return send_file(io.BytesIO(bank.export_zip()), mimetype="application/zip",
+                     as_attachment=True, download_name="asep-questions.zip")
+
+
+@bp.route("/import", methods=["GET", "POST"])
+def import_bank():
+    if request.method == "GET":
+        return render_template("admin/import.html", categories=_categories(), selected="")
+    category = _category_or_404(request.form.get("category", ""))
+
+    def form_error(problems: list[str]):
+        return render_template("admin/import.html", categories=_categories(),
+                               selected=category.slug, problems=problems), 400
+
+    if "payload" in request.form:  # step 2: the admin confirmed the preview
+        raw = request.form["payload"]
+    else:
+        upload = request.files.get("file")
+        if upload is None or not upload.filename:
+            return form_error(["Επιλέξτε αρχείο JSON."])
+        try:
+            raw = upload.read().decode("utf-8-sig")
+        except UnicodeDecodeError:
+            return form_error(["Το αρχείο δεν είναι κείμενο UTF-8."])
+    try:
+        items = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        return form_error([f"Μη έγκυρο JSON: {exc}"])
+    try:
+        if request.form.get("confirm") == "1":
+            plan = bank.apply_import(category, items)
+            flash(f"Εισαγωγή στην κατηγορία «{category.name}»: {len(plan.added)} νέες, "
+                  f"{len(plan.changed)} αλλαγμένες, {len(plan.removed)} διαγραμμένες.", "success")
+            return redirect(url_for("admin.questions", category=category.slug))
+        plan = bank.plan_import(category, items)
+    except bank.BankError as exc:
+        return form_error(exc.problems)
+    return render_template("admin/import_preview.html", category=category,
+                           plan=plan, payload=raw)
