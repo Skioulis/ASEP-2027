@@ -7,7 +7,7 @@ import json
 import unicodedata
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, send_file, url_for
-from flask_login import current_user
+from flask_login import current_user, login_user
 from sqlalchemy import func, select
 
 import bank
@@ -219,5 +219,8 @@ def user_action(uid: int, action: str):
         db.session.delete(user)
         message = f"Ο χρήστης {user.username} διαγράφηκε."
     db.session.commit()
+    if action == "reset-password" and user.id == current_user.id:
+        # The new password changed the session id; keep this admin signed in.
+        login_user(user, remember=True)
     flash(message, "success")
     return redirect(url_for("admin.users"))

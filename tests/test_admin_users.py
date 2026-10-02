@@ -25,6 +25,22 @@ def test_reset_password(admin_client, user, app):
     assert login(app.test_client(), password="brand-new-pass").status_code == 302
 
 
+def test_password_reset_logs_out_existing_sessions(admin_client, user, app):
+    maria = app.test_client()
+    login(maria)
+    assert maria.get("/stats").status_code == 200
+    admin_client.post(f"/admin/users/{user.id}/reset-password", data={"password": "brand-new-pass"})
+    response = maria.get("/stats")
+    assert response.status_code == 302
+    assert response.headers["Location"].startswith("/login")
+
+
+def test_admin_resetting_own_password_stays_logged_in(admin_client, admin):
+    admin_client.post(f"/admin/users/{admin.id}/reset-password", data={"password": "brand-new-pass"})
+    assert db.session.get(User, admin.id).check_password("brand-new-pass")
+    assert admin_client.get("/admin/users").status_code == 200
+
+
 def test_reset_password_too_short(admin_client, user):
     admin_client.post(f"/admin/users/{user.id}/reset-password", data={"password": "short"})
     assert db.session.get(User, user.id).check_password("secret-pass")

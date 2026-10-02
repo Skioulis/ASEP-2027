@@ -19,6 +19,12 @@ def test_ensure_admin_promotes_and_resets_existing(app):
     assert user.is_admin and user.active and user.check_password("new-password")
 
 
+def test_ensure_admin_keeps_hash_when_password_is_unchanged(app):
+    first = ensure_admin("boss", "admin-pass-1").password_hash
+    again = ensure_admin("boss", "admin-pass-1").password_hash
+    assert again == first
+
+
 def test_cli_skips_without_env(app, monkeypatch):
     monkeypatch.delenv("ADMIN_USERNAME", raising=False)
     monkeypatch.delenv("ADMIN_PASSWORD", raising=False)

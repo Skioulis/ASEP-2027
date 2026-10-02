@@ -6,8 +6,11 @@ pragmas), so deleting a question or a user also deletes its attempts.
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 from datetime import datetime, timezone
 
+from flask import current_app
 from flask_login import UserMixin
 from sqlalchemy import JSON, ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -78,6 +81,19 @@ class User(UserMixin, db.Model):
     def check_password(self, password: str) -> bool:
         return check_password_hash(self.password_hash, password)
 
+    def session_stamp(self) -> str:
+        """Short keyed fingerprint of the current password hash."""
+        return hmac.new(current_app.secret_key.encode(), self.password_hash.encode(),
+                        hashlib.sha256).hexdigest()[:16]
+
+    def get_id(self) -> str:
+        """Flask-Login session/remember-cookie id: ``<id>:<password fingerprint>``.
+
+        Changing the password changes the id, which logs out old sessions and
+        remember cookies.
+        """
+        return f"{self.id}:{self.session_stamp()}"
+
 
 class Attempt(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -96,6 +112,15 @@ class Attempt(db.Model):
 
 @login_manager.user_loader
 def load_user(user_id: str) -> User | None:
-    # Returning None for disabled users logs them out on their next request.
-    user = db.session.get(User, int(user_id))
-    return user if user is not None and user.active else None
+    # Returning None logs the user out on their next request: for disabled
+    # users, and for ids minted before the password last changed.
+    parts = user_id.split(":")
+    if len(parts) != 2 or not (parts[0].isascii() and parts[0].isdigit()):
+        return None
+    user = db.session.get(User, int(parts[0]))
+    if user is None or not user.active:
+        return None
+    # Compare as bytes: compare_digest rejects non-ASCII str.
+    if not hmac.compare_digest(user.session_stamp().encode(), parts[1].encode()):
+        return None
+    return user

@@ -52,7 +52,23 @@ def test_deleting_user_deletes_their_attempts(app):
 
 def test_disabled_user_is_not_loaded_into_session(app):
     _, user = _question_with_attempt()
-    assert load_user(str(user.id)) is user
+    assert load_user(user.get_id()) is user
     user.active = False
     db.session.commit()
-    assert load_user(str(user.id)) is None
+    assert load_user(user.get_id()) is None
+
+
+def test_changing_password_invalidates_old_session_ids(app):
+    _, user = _question_with_attempt()
+    old_id = user.get_id()
+    assert load_user(old_id) is user
+    user.set_password("another-pass")
+    db.session.commit()
+    assert load_user(old_id) is None
+    assert load_user(user.get_id()) is user
+
+
+def test_malformed_session_ids_are_rejected(app):
+    _question_with_attempt()
+    for bad_id in ("abc", "1", "1:x:y", "x:abc"):
+        assert load_user(bad_id) is None, bad_id

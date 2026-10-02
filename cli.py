@@ -17,10 +17,13 @@ def ensure_admin(username: str, password: str) -> User:
     """Create the admin account, or reset an existing one to admin + this password."""
     username = username.strip().lower()
     user = db.session.scalar(select(User).filter_by(username=username))
-    if user is None:
+    is_new = user is None
+    if is_new:
         user = User(username=username)
         db.session.add(user)
-    user.set_password(password)
+    # Re-hashing on every start would change the session id and log the admin out.
+    if is_new or not user.check_password(password):
+        user.set_password(password)
     user.is_admin = True
     user.active = True
     db.session.commit()

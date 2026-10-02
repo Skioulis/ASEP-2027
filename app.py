@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from flask import Flask, render_template
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -39,6 +39,8 @@ def create_app(config: dict | None = None) -> Flask:
     app.config["SESSION_COOKIE_SECURE"] = secure
     app.config["REMEMBER_COOKIE_SECURE"] = secure
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    app.config["REMEMBER_COOKIE_SAMESITE"] = "Lax"
+    app.config["REMEMBER_COOKIE_DURATION"] = timedelta(days=30)
     # CSRF tokens stay valid for the whole session (quiz tabs can stay open).
     app.config["WTF_CSRF_TIME_LIMIT"] = None
     # The extracted question bank used by `flask seed`.
