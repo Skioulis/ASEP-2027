@@ -2,10 +2,29 @@
 
 from __future__ import annotations
 
+import os
+
 import click
 from flask import Flask, current_app
+from sqlalchemy import select
 
 import bank
+from extensions import db
+from models import User
+
+
+def ensure_admin(username: str, password: str) -> User:
+    """Create the admin account, or reset an existing one to admin + this password."""
+    username = username.strip().lower()
+    user = db.session.scalar(select(User).filter_by(username=username))
+    if user is None:
+        user = User(username=username)
+        db.session.add(user)
+    user.set_password(password)
+    user.is_admin = True
+    user.active = True
+    db.session.commit()
+    return user
 
 
 def register_cli(app: Flask) -> None:
@@ -15,3 +34,16 @@ def register_cli(app: Flask) -> None:
         inserted = bank.seed(current_app.config["DATA_DIR"])
         click.echo(f"Seeded {inserted} questions." if inserted
                    else "Questions already loaded; nothing to do.")
+
+    @app.cli.command("ensure-admin")
+    def ensure_admin_command() -> None:
+        """Create/update the admin from ADMIN_USERNAME and ADMIN_PASSWORD."""
+        username = os.environ.get("ADMIN_USERNAME", "")
+        password = os.environ.get("ADMIN_PASSWORD", "")
+        if not username or not password:
+            click.echo("ADMIN_USERNAME/ADMIN_PASSWORD not set; skipping.")
+            return
+        if len(password) < 8:
+            raise click.ClickException("ADMIN_PASSWORD must be at least 8 characters.")
+        user = ensure_admin(username, password)
+        click.echo(f"Admin '{user.username}' is ready.")

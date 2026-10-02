@@ -1,0 +1,15 @@
+.venv/
+.git/
+.gitignore
+.idea/
+.claude/
+__pycache__/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.env
+# local database — the container builds its own on the mounted volume
+*.db
+# source PDFs and design docs are not needed at runtime
+themata/
+docs/

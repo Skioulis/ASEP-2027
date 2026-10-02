@@ -1,0 +1,22 @@
+services:
+  web:
+    build: .
+    image: asep2027
+    container_name: asep2027
+    ports:
+      # Only reachable from this machine; Tailscale Funnel publishes it.
+      - "127.0.0.1:8000:8000"
+    environment:
+      ASEP_DB: /data/db/asep.db
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
+      # Admin account (re)created on every start. Set both in .env.
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      SESSION_COOKIE_SECURE: "1"
+      WEB_CONCURRENCY: 3
+    volumes:
+      - db_data:/data/db
+    restart: unless-stopped
+
+volumes:
+  db_data:   # SQLite database (users, progress, edited questions)
