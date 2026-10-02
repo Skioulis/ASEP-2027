@@ -41,6 +41,14 @@ def test_validate_reports_every_problem():
     assert "alpha-" in problems[1]
 
 
+def test_validate_rejects_unsafe_id_characters():
+    for bad_id in ("alpha-1');alert(1)//",   # quote/paren/slash would break inline JS
+                   "alpha-Α1"):              # Greek capital alpha, not a latin "A"
+        problems = bank.validate_items([dict(GOOD, id=bad_id)], "alpha")
+        assert len(problems) == 1, bad_id
+        assert "μόνο λατινικά" in problems[0]
+
+
 def test_read_bank_returns_categories_in_index_order():
     data = bank.read_bank(FIXTURE_BANK)
     assert [c["slug"] for c in data] == ["alpha", "beta"]

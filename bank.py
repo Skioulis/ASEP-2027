@@ -14,11 +14,16 @@ from __future__ import annotations
 
 import json
 import os
+import re
 
 from sqlalchemy import func, select
 
 from extensions import db
 from models import Category, Question
+
+# Question ids end up in inline JS/HTML on the browse page: keep them boring.
+ID_RE = re.compile(r"[a-z0-9._-]+")
+
 
 class BankError(ValueError):
     """Question data failed validation; ``problems`` lists every issue."""
@@ -46,6 +51,8 @@ def validate_items(items: object, slug: str) -> list[str]:
         label = f"Ερώτηση {pos} ({qid})"
         if not isinstance(qid, str) or not qid.startswith(f"{slug}-"):
             problems.append(f"{label}: το id πρέπει να αρχίζει με «{slug}-».")
+        elif not ID_RE.fullmatch(qid):
+            problems.append(f"{label}: το id επιτρέπεται να περιέχει μόνο λατινικά πεζά, ψηφία και . _ -")
         elif qid in seen:
             problems.append(f"{label}: διπλό id.")
         else:

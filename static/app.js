@@ -362,7 +362,7 @@ function browseCard(q) {
     let cls = 'answer-btn btn w-100 mb-1 text-start';
     if (done && i === q.correct) cls += choice === -1 ? ' revealed' : ' correct';
     else if (done && i === choice) cls += ' wrong';
-    return `<button class="${cls}" ${done ? 'disabled' : ''} onclick="browseAnswer('${q.id}', ${i})">
+    return `<button class="${cls}" ${done ? 'disabled' : ''} onclick="browseAnswer(${escHtml(JSON.stringify(q.id))}, ${i})">
       <strong>${LETTERS[i]}.</strong> ${escHtml(text)}
       ${done && i === q.correct ? '<i class="fas fa-check ms-2"></i>' : ''}
     </button>`;
@@ -373,7 +373,7 @@ function browseCard(q) {
   else if (done && choice === q.correct) status = '<span class="badge bg-success ms-auto"><i class="fas fa-check me-1"></i>Σωστά</span>';
   else if (done) status = '<span class="badge bg-danger ms-auto"><i class="fas fa-times me-1"></i>Λάθος</span>';
 
-  return `<div class="card question-card" id="bq-${q.id}">
+  return `<div class="card question-card" id="bq-${escHtml(q.id)}">
     <div class="card-header d-flex align-items-center flex-wrap gap-1">
       ${categoryBadge(q.category)}
       <span class="badge bg-secondary">#${q.n}</span>
@@ -382,7 +382,7 @@ function browseCard(q) {
     <div class="card-body">
       <h6 class="card-title mb-3 qtext">${escHtml(q.question)}</h6>
       <div>${opts}</div>
-      ${done ? '' : `<button class="btn btn-sm btn-outline-primary mt-2" onclick="browseAnswer('${q.id}', -1)">
+      ${done ? '' : `<button class="btn btn-sm btn-outline-primary mt-2" onclick="browseAnswer(${escHtml(JSON.stringify(q.id))}, -1)">
           <i class="fas fa-eye me-1"></i>Εμφάνιση σωστής απάντησης</button>`}
     </div>
   </div>`;
