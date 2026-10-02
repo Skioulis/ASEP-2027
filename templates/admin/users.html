@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Χρήστες — Διαχείριση{% endblock %}
+{% macro action(user, name, label, style, confirm_text=None) -%}
+  <form method="post" action="{{ url_for('admin.user_action', uid=user.id, action=name) }}" class="d-inline"
+        {% if confirm_text %}onsubmit="return confirm('{{ confirm_text }}')"{% endif %}>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-sm {{ style }}" type="submit">{{ label }}</button>
+  </form>
+{%- endmacro %}
+{% block content %}
+<div class="container py-4">
+  {% include "admin/_nav.html" %}
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr><th>Χρήστης</th><th>Εγγραφή</th><th>Τελευταία σύνδεση</th><th class="text-center">Απαντήσεις</th><th>Κατάσταση</th><th></th></tr>
+        </thead>
+        <tbody>
+        {% for user, attempts in rows %}
+          <tr>
+            <td>{{ user.username }}{% if user.is_admin %} <span class="badge bg-dark">admin</span>{% endif %}</td>
+            <td>{{ user.created_at|localtime('%d/%m/%Y') }}</td>
+            <td>{{ user.last_login_at|localtime }}</td>
+            <td class="text-center">{{ attempts }}</td>
+            <td>{% if user.active %}<span class="badge bg-success">ενεργός</span>{% else %}<span class="badge bg-secondary">ανενεργός</span>{% endif %}</td>
+            <td class="text-end text-nowrap">
+              {% if user.id != current_user.id %}
+                {{ action(user, 'toggle-active', 'Απενεργοποίηση' if user.active else 'Ενεργοποίηση', 'btn-outline-secondary') }}
+                {{ action(user, 'toggle-admin', 'Αφαίρεση admin' if user.is_admin else 'Ορισμός admin', 'btn-outline-dark') }}
+                {{ action(user, 'delete', 'Διαγραφή', 'btn-outline-danger', 'Διαγραφή του ' ~ user.username ~ ' και όλης της προόδου του;') }}
+              {% endif %}
+              <form method="post" action="{{ url_for('admin.user_action', uid=user.id, action='reset-password') }}" class="d-inline-flex gap-1 ms-1">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input class="form-control form-control-sm" name="password" type="password" minlength="8" placeholder="νέος κωδικός" required style="width: 9rem">
+                <button class="btn btn-sm btn-outline-primary" type="submit">Αλλαγή</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

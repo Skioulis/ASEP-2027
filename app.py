@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import os
 
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from flask import Flask, render_template
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -12,6 +14,18 @@ from extensions import csrf, db, login_manager, migrate
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 # Overridable so the database can live on a mounted volume in Docker.
 DB_PATH = os.environ.get("ASEP_DB", os.path.join(BASE_DIR, "asep.db"))
+
+ATHENS = ZoneInfo("Europe/Athens")
+
+
+def localtime(value: datetime | None, fmt: str = "%d/%m/%Y %H:%M") -> str:
+    """Jinja filter: show a stored (naive UTC) timestamp in Greek local time."""
+    if value is None:
+        return "—"
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(ATHENS).strftime(fmt)
+
 
 def create_app(config: dict | None = None) -> Flask:
     app = Flask(__name__)
@@ -58,6 +72,7 @@ def create_app(config: dict | None = None) -> Flask:
     for blueprint in (main.bp, auth.bp, api.bp, admin.bp):
         app.register_blueprint(blueprint)
     register_cli(app)
+    app.add_template_filter(localtime)
 
     @app.errorhandler(403)
     @app.errorhandler(404)

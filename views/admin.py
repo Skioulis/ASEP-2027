@@ -12,11 +12,13 @@ from sqlalchemy import func, select
 
 import bank
 from extensions import db, login_manager
-from models import Category, Question
+from models import Attempt, Category, Question, User
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
 PAGE_SIZE = 25
+MIN_PASSWORD = 8
+USER_ACTIONS = ("toggle-active", "toggle-admin", "reset-password", "delete")
 
 
 @bp.before_request
@@ -179,3 +181,43 @@ def import_bank():
         return form_error(exc.problems)
     return render_template("admin/import_preview.html", category=category,
                            plan=plan, payload=raw)
+
+
+# ── Users ────────────────────────────────────────────────────────────────────
+
+@bp.get("/users")
+def users():
+    rows = db.session.execute(
+        select(User, func.count(Attempt.id)).outerjoin(Attempt)
+        .group_by(User.id).order_by(User.created_at.desc())).all()
+    return render_template("admin/users.html", rows=rows)
+
+
+@bp.post("/users/<int:uid>/<action>")
+def user_action(uid: int, action: str):
+    if action not in USER_ACTIONS:
+        abort(404)
+    user = db.session.get(User, uid) or abort(404)
+    if user.id == current_user.id and action != "reset-password":
+        flash("Δεν μπορείτε να απενεργοποιήσετε, να υποβαθμίσετε ή να διαγράψετε "
+              "τον δικό σας λογαριασμό.", "danger")
+        return redirect(url_for("admin.users"))
+    if action == "toggle-active":
+        user.active = not user.active
+        message = f"Ο χρήστης {user.username} {'ενεργοποιήθηκε' if user.active else 'απενεργοποιήθηκε'}."
+    elif action == "toggle-admin":
+        user.is_admin = not user.is_admin
+        message = f"Ο χρήστης {user.username} {'είναι πλέον' if user.is_admin else 'δεν είναι πλέον'} διαχειριστής."
+    elif action == "reset-password":
+        password = request.form.get("password", "")
+        if len(password) < MIN_PASSWORD:
+            flash(f"Ο νέος κωδικός πρέπει να έχει τουλάχιστον {MIN_PASSWORD} χαρακτήρες.", "danger")
+            return redirect(url_for("admin.users"))
+        user.set_password(password)
+        message = f"Ο κωδικός του {user.username} άλλαξε."
+    else:
+        db.session.delete(user)
+        message = f"Ο χρήστης {user.username} διαγράφηκε."
+    db.session.commit()
+    flash(message, "success")
+    return redirect(url_for("admin.users"))
