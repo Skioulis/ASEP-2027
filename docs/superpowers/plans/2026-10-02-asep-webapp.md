@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Work in `/home/skioulis/PycharmProjects/ASEP-2027` on branch `main`; run every command from the repo root.
+- Work in `/home/skioulis/PycharmProjects/ASEP-2027` on branch `webapp`; run every command from the repo root.
 - Dependencies are exactly the pins in `requirements.txt` (Task 1). Add no others.
 - All user-facing text (templates, flash messages, API `error` strings) is Greek; code, comments, CLI output and commit messages are English.
 - Question JSON format: `index.json` = `[{name, slug, count}]`; `categories/<slug>.json` = `[{id, n, q, a, c}]`, `id` = `"<slug>-<n>"`, `a` = exactly 4 options (index 0–3 = α/β/γ/δ), `c` = 0-based correct index. `data/` is the seed source and must not be edited by the app.
