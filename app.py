@@ -51,6 +51,9 @@ def create_app(config: dict | None = None) -> Flask:
     # (max attempts, window in seconds) for the public login/register forms.
     app.config["LOGIN_RATE"] = (10, 300)
     app.config["REGISTER_RATE"] = (10, 3600)
+    # (max answers, window in seconds) per user for POST /api/attempts; a normal
+    # quiz answers a question every few seconds, so this only stops scripted floods.
+    app.config["ATTEMPT_RATE"] = (120, 60)
     if config:
         app.config.update(config)
 

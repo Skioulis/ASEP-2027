@@ -8,12 +8,13 @@ from __future__ import annotations
 
 import random
 
-from flask import Blueprint, abort, jsonify, make_response, request
+from flask import Blueprint, abort, current_app, jsonify, make_response, request
 from flask_login import current_user
 from sqlalchemy import func, select
 
 from extensions import db
 from models import Attempt, Category, Question
+from ratelimit import limiter
 from stats import latest_status
 
 bp = Blueprint("api", __name__, url_prefix="/api")
@@ -90,6 +91,8 @@ def quiz():
 @bp.post("/attempts")
 def record_attempt():
     _require_login()
+    if not limiter.hit(f"attempt:{current_user.id}", *current_app.config["ATTEMPT_RATE"]):
+        _fail(429, "Πάρα πολλές απαντήσεις σε λίγο χρόνο. Περιμένετε λίγο.")
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         _fail(400, "Μη έγκυρη απάντηση.")

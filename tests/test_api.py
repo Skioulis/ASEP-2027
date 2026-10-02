@@ -78,6 +78,15 @@ def test_attempt_is_recorded(user_client, bank_loaded, user):
            (user.id, "alpha-1", 0, "browse")
 
 
+def test_attempts_are_rate_limited_per_user(user_client, bank_loaded, app):
+    app.config["ATTEMPT_RATE"] = (2, 60)
+    assert _answer(user_client, "alpha-1", 1).status_code == 201
+    assert _answer(user_client, "alpha-1", 1).status_code == 201
+    response = _answer(user_client, "alpha-1", 1)
+    assert response.status_code == 429
+    assert "error" in response.get_json()
+
+
 def test_attempt_validation(user_client, bank_loaded):
     assert _answer(user_client, "nope-1", 0).status_code == 404
     assert _answer(user_client, 7, 0).status_code == 404
