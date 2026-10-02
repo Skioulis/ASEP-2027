@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "asep-dev",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "FLASK_APP=app .venv/bin/flask db upgrade && FLASK_APP=app .venv/bin/flask seed && FLASK_APP=app exec .venv/bin/flask run --port 8001"
+      ],
+      "port": 8001
+    }
+  ]
+}

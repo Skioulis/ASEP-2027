@@ -1,7 +1,79 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container py-5 text-center">
-  <h2 class="text-primary">ΑΣΕΠ 2027 — Τράπεζα Θεμάτων</h2>
-  <p class="text-muted">Το quiz και η μελέτη ερωτήσεων προστίθενται στο επόμενο βήμα.</p>
+<div class="hero">
+  <div class="container d-flex flex-column align-items-center text-center">
+    <p class="mb-3 opacity-75">Επιλέξτε κατηγορία και τρόπο μελέτης</p>
+
+    <div class="mb-3 w-100 d-flex flex-wrap justify-content-center gap-2">
+      <select id="categoryFilter" class="form-select">
+        <option value="">Όλες οι κατηγορίες</option>
+      </select>
+      {% if current_user.is_authenticated %}
+      <select id="poolFilter" class="form-select">
+        <option value="all">Όλες οι ερωτήσεις</option>
+        <option value="unseen">Μόνο αναπάντητες</option>
+        <option value="wrong">Μόνο όσες έκανα λάθος</option>
+      </select>
+      {% endif %}
+    </div>
+
+    <div class="d-flex flex-wrap justify-content-center gap-2">
+      <button id="btnQuiz" class="btn btn-light fw-semibold">
+        <i class="fas fa-dice me-2"></i>25 Τυχαίες Ερωτήσεις
+      </button>
+      <button id="btnBrowse" class="btn btn-outline-light fw-semibold">
+        <i class="fas fa-list me-2"></i>Όλες οι Ερωτήσεις
+      </button>
+    </div>
+  </div>
 </div>
+
+<div class="container mt-4">
+  <div id="messageBox"></div>
+
+  <div id="loading" class="text-center py-5 d-none">
+    <div class="spinner-border text-primary" role="status"></div>
+    <p class="mt-2 text-muted">Φόρτωση ερωτήσεων…</p>
+  </div>
+
+  <div id="welcome">
+    {% if not current_user.is_authenticated %}
+    <div class="alert alert-info text-center">
+      <i class="fas fa-info-circle me-1"></i>
+      <a href="{{ url_for('auth.register') }}">Κάντε εγγραφή</a> ή <a href="{{ url_for('auth.login') }}">συνδεθείτε</a>
+      για να αποθηκεύεται η πρόοδός σας.
+    </div>
+    {% endif %}
+    <div class="row g-4 justify-content-center">
+      <div class="col-md-5">
+        <div class="card mode-card h-100 text-center p-3" onclick="document.getElementById('btnQuiz').click()">
+          <div class="card-body">
+            <i class="fas fa-dice fa-3x text-primary mb-3"></i>
+            <h5 class="card-title">Quiz Mode</h5>
+            <p class="card-text text-muted">25 τυχαίες ερωτήσεις. Απαντήστε και δείτε το σκορ σας.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-5">
+        <div class="card mode-card h-100 text-center p-3" onclick="document.getElementById('btnBrowse').click()">
+          <div class="card-body">
+            <i class="fas fa-book-open fa-3x text-success mb-3"></i>
+            <h5 class="card-title">Μελέτη</h5>
+            <p class="card-text text-muted">Περιηγηθείτε σε όλες τις ερωτήσεις και ελέγξτε τις απαντήσεις σας.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="quizContainer" class="d-none"></div>
+
+  <div id="browseContainer" class="d-none">
+    <div id="browseQuestions"></div>
+    <div id="pagination" class="d-flex justify-content-center mt-4"></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='app.js') }}"></script>
 {% endblock %}
