@@ -79,7 +79,15 @@ def test_seed_loads_once(app):
     assert alpha.questions[1].options[0] == "120"
 
 
+def test_seed_after_bank_emptied_is_noop(app):
+    bank.seed(FIXTURE_BANK)
+    for category in db.session.scalars(select(Category)).all():
+        bank.apply_import(category, [])
+    assert db.session.scalar(select(func.count()).select_from(Question)) == 0
+    assert bank.seed(FIXTURE_BANK) == 0
+
+
 def test_seed_cli_command(app):
     runner = app.test_cli_runner()
     assert "Seeded 5 questions." in runner.invoke(args=["seed"]).output
-    assert "already loaded" in runner.invoke(args=["seed"]).output
+    assert "Bank already loaded; nothing to do." in runner.invoke(args=["seed"]).output

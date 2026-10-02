@@ -96,8 +96,12 @@ def _new_question(item: dict, pos: int, category: Category) -> Question:
 
 
 def seed(data_dir: str) -> int:
-    """Load the bank into an empty database; return questions inserted (0 = already seeded)."""
-    if db.session.scalar(select(func.count()).select_from(Question)):
+    """Load the bank into a database with no categories; return questions inserted.
+
+    Returns 0 when categories already exist. The app never deletes categories,
+    so this stays a no-op even if an admin has emptied every category.
+    """
+    if db.session.scalar(select(func.count()).select_from(Category)):
         return 0
     total = 0
     for position, entry in enumerate(read_bank(data_dir)):

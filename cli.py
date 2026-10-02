@@ -33,10 +33,10 @@ def ensure_admin(username: str, password: str) -> User:
 def register_cli(app: Flask) -> None:
     @app.cli.command("seed")
     def seed_command() -> None:
-        """Load data/ into the database if it holds no questions yet."""
+        """Load data/ into the database if it holds no categories yet."""
         inserted = bank.seed(current_app.config["DATA_DIR"])
         click.echo(f"Seeded {inserted} questions." if inserted
-                   else "Questions already loaded; nothing to do.")
+                   else "Bank already loaded; nothing to do.")
 
     @app.cli.command("ensure-admin")
     def ensure_admin_command() -> None:
