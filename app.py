@@ -32,10 +32,14 @@ def create_app(config: dict | None = None) -> Flask:
     app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DB_PATH}"
     # Wait up to 15s on a locked SQLite file (helps with multiple gunicorn workers).
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"connect_args": {"timeout": 15}}
-    # Signs the session cookie. Override in production (.env).
-    app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-asep-key")
     # Funnel serves the site over https, so production cookies are Secure.
     secure = os.environ.get("SESSION_COOKIE_SECURE") == "1"
+    # Signs the session cookie. Production (Secure cookies) must set it in .env;
+    # only local development may fall back to the built-in key.
+    secret_key = os.environ.get("SECRET_KEY", "")
+    if secure and not secret_key:
+        raise RuntimeError("SECRET_KEY must be set in production")
+    app.config["SECRET_KEY"] = secret_key or "dev-asep-key"
     app.config["SESSION_COOKIE_SECURE"] = secure
     app.config["REMEMBER_COOKIE_SECURE"] = secure
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
@@ -78,6 +82,13 @@ def create_app(config: dict | None = None) -> Flask:
         app.register_blueprint(blueprint)
     register_cli(app)
     app.add_template_filter(localtime)
+
+    @app.after_request
+    def security_headers(response):
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("Referrer-Policy", "same-origin")
+        return response
 
     @app.errorhandler(403)
     @app.errorhandler(404)

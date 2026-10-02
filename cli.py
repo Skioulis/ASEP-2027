@@ -11,6 +11,7 @@ from sqlalchemy import select
 import bank
 from extensions import db
 from models import User
+from views.auth import USERNAME_RE
 
 
 def ensure_admin(username: str, password: str) -> User:
@@ -46,6 +47,9 @@ def register_cli(app: Flask) -> None:
         if not username or not password:
             click.echo("ADMIN_USERNAME/ADMIN_PASSWORD not set; skipping.")
             return
+        username = username.strip().lower()
+        if not USERNAME_RE.fullmatch(username):
+            raise click.ClickException("ADMIN_USERNAME must match [a-z0-9_.-]{3,32}.")
         if len(password) < 8:
             raise click.ClickException("ADMIN_PASSWORD must be at least 8 characters.")
         user = ensure_admin(username, password)

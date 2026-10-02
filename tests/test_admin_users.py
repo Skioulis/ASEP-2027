@@ -8,6 +8,13 @@ def test_users_page_lists_accounts(admin_client, user):
     assert "maria" in html and "boss" in html
 
 
+def test_confirm_dialogs_are_json_encoded(admin_client, bank_loaded, user):
+    for url in ("/admin/users", "/admin/questions/alpha-1"):
+        html = admin_client.get(url).get_data(as_text=True)
+        assert "onsubmit='return confirm(\"" in html, url
+        assert "confirm('" not in html, url
+
+
 def test_toggle_active_blocks_login(admin_client, user, app):
     admin_client.post(f"/admin/users/{user.id}/toggle-active")
     assert db.session.get(User, user.id).active is False

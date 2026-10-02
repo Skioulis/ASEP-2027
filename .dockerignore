@@ -3,6 +3,8 @@
 .gitignore
 .idea/
 .claude/
+.superpowers/
+.junie/
 __pycache__/
 **/__pycache__/
 *.pyc
@@ -10,6 +12,9 @@ __pycache__/
 .env
 # local database — the container builds its own on the mounted volume
 *.db
+*.db-journal
+*.db-wal
+*.db-shm
 # source PDFs and design docs are not needed at runtime
 themata/
 docs/

@@ -168,7 +168,7 @@ def import_bank():
             return form_error(["Το αρχείο δεν είναι κείμενο UTF-8."])
     try:
         items = json.loads(raw)
-    except json.JSONDecodeError as exc:
+    except (ValueError, RecursionError) as exc:  # JSONDecodeError is a ValueError
         return form_error([f"Μη έγκυρο JSON: {exc}"])
     try:
         if request.form.get("confirm") == "1":

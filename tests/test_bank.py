@@ -21,6 +21,12 @@ def test_validate_n_is_optional():
     assert bank.validate_items([item], "alpha") == []
 
 
+def test_validate_rejects_numbers_beyond_sqlite_integer_range():
+    problems = bank.validate_items([dict(GOOD, n=10**30)], "alpha")
+    assert len(problems) == 1 and "αριθμός (n)" in problems[0]
+    assert bank.validate_items([dict(GOOD, n=2_147_483_647)], "alpha") == []
+
+
 def test_validate_rejects_non_list():
     assert len(bank.validate_items({"id": "x"}, "alpha")) == 1
 

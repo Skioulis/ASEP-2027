@@ -94,3 +94,11 @@ def test_import_rejects_broken_json(admin_client, bank_loaded):
         content_type="multipart/form-data")
     assert response.status_code == 400
     assert "Μη έγκυρο JSON" in response.get_data(as_text=True)
+
+
+def test_import_rejects_absurdly_nested_json(admin_client, bank_loaded):
+    response = admin_client.post("/admin/import", data={
+        "category": "alpha", "file": (io.BytesIO(b"[" * 200_000), "x.json")},
+        content_type="multipart/form-data")
+    assert response.status_code == 400
+    assert "Μη έγκυρο JSON" in response.get_data(as_text=True)

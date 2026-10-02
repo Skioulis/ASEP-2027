@@ -1,3 +1,4 @@
+import pytest
 from sqlalchemy import select
 
 from cli import ensure_admin
@@ -45,3 +46,12 @@ def test_cli_creates_admin_from_env(app, monkeypatch):
     monkeypatch.setenv("ADMIN_PASSWORD", "admin-pass-1")
     result = app.test_cli_runner().invoke(args=["ensure-admin"])
     assert "Admin 'boss' is ready." in result.output
+
+
+@pytest.mark.parametrize("username", ["Bad Name!", "   "])
+def test_cli_rejects_invalid_admin_username(app, monkeypatch, username):
+    monkeypatch.setenv("ADMIN_USERNAME", username)
+    monkeypatch.setenv("ADMIN_PASSWORD", "admin-pass-1")
+    result = app.test_cli_runner().invoke(args=["ensure-admin"])
+    assert result.exit_code != 0
+    assert db.session.scalar(select(User)) is None

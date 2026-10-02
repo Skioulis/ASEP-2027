@@ -28,7 +28,7 @@
 
   {% if question %}
   <form method="post" action="{{ url_for('admin.delete_question', qid=question.id) }}" class="mt-4"
-        onsubmit="return confirm('Διαγραφή της ερώτησης {{ question.id }} και όλων των απαντήσεων χρηστών σε αυτήν;')">
+        onsubmit='return confirm({{ ("Διαγραφή της ερώτησης " ~ question.id ~ " και όλων των απαντήσεων χρηστών σε αυτήν;")|tojson }})'>
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button class="btn btn-outline-danger btn-sm" type="submit"><i class="fas fa-trash me-1"></i>Διαγραφή ερώτησης</button>
   </form>

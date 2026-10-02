@@ -26,6 +26,8 @@ from models import Attempt, Category, Question
 
 # Question ids end up in inline JS/HTML on the browse page: keep them boring.
 ID_RE = re.compile(r"[a-z0-9._-]+")
+# Question numbers are stored in a 32-bit-safe integer column.
+MAX_NUMBER = 2_147_483_647
 
 
 class BankError(ValueError):
@@ -69,7 +71,7 @@ def validate_items(items: object, slug: str) -> list[str]:
         if not (_is_int(item.get("c")) and 0 <= item["c"] <= 3):
             problems.append(f"{label}: η σωστή απάντηση (c) πρέπει να είναι 0–3.")
         number = item.get("n", pos)
-        if not (_is_int(number) and number > 0):
+        if not (_is_int(number) and 0 < number <= MAX_NUMBER):
             problems.append(f"{label}: ο αριθμός (n) πρέπει να είναι θετικός ακέραιος.")
     return problems
 
