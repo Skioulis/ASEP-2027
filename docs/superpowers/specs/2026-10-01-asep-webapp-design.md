@@ -132,12 +132,12 @@ study tool, so hiding answers from the client is not a goal.
    `ADMIN_PASSWORD` if both are set
 4. `exec gunicorn -b 0.0.0.0:8000 -w ${WEB_CONCURRENCY:-3} "app:create_app()"`
 
-`docker-compose.yaml`: one `web` service, port `127.0.0.1:8000:8000` (only
+`docker-compose.yaml`: one `web` service, port `127.0.0.1:8027:8000` (only
 reachable locally; Funnel provides public access), named volume `db_data:/data/db`,
 env `SECRET_KEY`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `SESSION_COOKIE_SECURE=1`,
 `restart: unless-stopped`. `.env.example` documents the variables.
 
-Exposure: `tailscale funnel --bg 8000` → `https://<machine>.<tailnet>.ts.net`.
+Exposure: `tailscale funnel --bg 8027` → `https://<machine>.<tailnet>.ts.net`.
 `ProxyFix` trusts one proxy hop so redirects/URLs use https. README covers build,
 run, Funnel, and backing up the SQLite volume.
 

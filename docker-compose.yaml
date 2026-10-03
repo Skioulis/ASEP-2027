@@ -5,7 +5,9 @@ services:
     container_name: asep2027
     ports:
       # Only reachable from this machine; Tailscale Funnel publishes it.
-      - "127.0.0.1:8000:8000"
+      # Host port 8027 (8000 is used by another service here); override with
+      # ASEP_PORT=<port> docker compose up -d. gunicorn listens on 8000 inside.
+      - "127.0.0.1:${ASEP_PORT:-8027}:8000"
     # Secrets and settings live in env/ (created from the *.example files, never
     # committed): SECRET_KEY and the admin account in app.env, the connection to
     # the external PostgreSQL server in database.env.

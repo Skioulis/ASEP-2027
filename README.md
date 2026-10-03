@@ -40,8 +40,8 @@ single `DATABASE_URL` (it takes precedence over the keys above; `postgres://` an
 `postgresql://` are rewritten to the psycopg driver). With `SESSION_COOKIE_SECURE=1`,
 as in `docker-compose.yaml`, the app refuses to start on SQLite.
 
-The app listens on `http://127.0.0.1:8000` (this machine only). On every start
-the entrypoint applies migrations, loads `data/` if the database has no
+The app listens on `http://127.0.0.1:8027` (this machine only; set `ASEP_PORT` to
+use another host port). On every start the entrypoint applies migrations, loads `data/` if the database has no
 categories yet, and creates/updates the admin account from `ADMIN_USERNAME` /
 `ADMIN_PASSWORD`.
 
@@ -52,7 +52,7 @@ Every request is logged to `docker compose logs web`.
 ### Expose it with Tailscale Funnel
 
 ```bash
-sudo tailscale funnel --bg 8000   # public https://<machine>.<tailnet>.ts.net
+sudo tailscale funnel --bg 8027   # public https://<machine>.<tailnet>.ts.net
 tailscale funnel status
 sudo tailscale funnel reset       # stop publishing
 ```
