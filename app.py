@@ -4,16 +4,16 @@ from __future__ import annotations
 
 import os
 
+from collections.abc import Mapping
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from flask import Flask, render_template
+from sqlalchemy.engine import URL, make_url
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from extensions import csrf, db, login_manager, migrate
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-# Overridable so the database can live on a mounted volume in Docker.
-DB_PATH = os.environ.get("ASEP_DB", os.path.join(BASE_DIR, "asep.db"))
 
 ATHENS = ZoneInfo("Europe/Athens")
 
@@ -27,15 +27,38 @@ def localtime(value: datetime | None, fmt: str = "%d/%m/%Y %H:%M") -> str:
     return value.astimezone(ATHENS).strftime(fmt)
 
 
+def database_uri(environ: Mapping[str, str]) -> str:
+    """Pick the SQLAlchemy database URL from the environment.
+
+    1. ``DATABASE_URL``, with a ``postgres://`` or ``postgresql://`` scheme
+       rewritten to the psycopg 3 driver.
+    2. The ``env/database.env`` keys HOST, PORT, ADMIN (the database user),
+       DATABASE and PASSWORD, when all but PORT are set; PORT defaults to 5432.
+    3. A local SQLite file (``ASEP_DB`` or ``asep.db``): development only.
+    """
+    url = environ.get("DATABASE_URL", "")
+    if url:
+        for scheme in ("postgres://", "postgresql://"):
+            if url.startswith(scheme):
+                return "postgresql+psycopg://" + url[len(scheme):]
+        return url
+    host, user, name, password = (environ.get(key, "") for key in ("HOST", "ADMIN", "DATABASE", "PASSWORD"))
+    if host and user and name and password:
+        # URL.create escapes special characters in the password for us.
+        return URL.create(
+            "postgresql+psycopg", username=user, password=password, host=host,
+            port=int(environ.get("PORT") or 5432), database=name,
+        ).render_as_string(hide_password=False)
+    return "sqlite:///" + (environ.get("ASEP_DB") or os.path.join(BASE_DIR, "asep.db"))
+
+
 def create_app(config: dict | None = None) -> Flask:
     app = Flask(__name__)
-    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DB_PATH}"
-    # Wait up to 15s on a locked SQLite file (helps with multiple gunicorn workers).
-    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"connect_args": {"timeout": 15}}
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_uri(os.environ)
     # Funnel serves the site over https, so production cookies are Secure.
     secure = os.environ.get("SESSION_COOKIE_SECURE") == "1"
-    # Signs the session cookie. Production (Secure cookies) must set it in .env;
-    # only local development may fall back to the built-in key.
+    # Signs the session cookie. Production (Secure cookies) must set it in
+    # env/app.env; only local development may fall back to the built-in key.
     secret_key = os.environ.get("SECRET_KEY", "")
     if secure and not secret_key:
         raise RuntimeError("SECRET_KEY must be set in production")
@@ -61,11 +84,24 @@ def create_app(config: dict | None = None) -> Flask:
     if config:
         app.config.update(config)
 
+    # Decided after the override so the options always match the database in use.
+    is_sqlite = make_url(app.config["SQLALCHEMY_DATABASE_URI"]).get_backend_name() == "sqlite"
+    if secure and is_sqlite:
+        raise RuntimeError("Production needs PostgreSQL: fill in env/database.env")
+    if "SQLALCHEMY_ENGINE_OPTIONS" not in app.config:
+        app.config["SQLALCHEMY_ENGINE_OPTIONS"] = (
+            # Wait up to 15s on a locked SQLite file (several gunicorn workers).
+            {"connect_args": {"timeout": 15}} if is_sqlite
+            # Drop dead connections after a database restart; recycle idle ones.
+            else {"pool_pre_ping": True, "pool_recycle": 1800}
+        )
+
     # Tailscale Funnel terminates TLS and proxies one hop to the container.
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
     db.init_app(app)
-    # render_as_batch: SQLite needs batch mode for ALTER TABLE migrations.
+    # render_as_batch: SQLite (local dev, tests) needs batch mode for ALTER TABLE
+    # migrations; on PostgreSQL it falls back to plain ALTER statements.
     migrate.init_app(app, db, render_as_batch=True)
     csrf.init_app(app)
     login_manager.init_app(app)

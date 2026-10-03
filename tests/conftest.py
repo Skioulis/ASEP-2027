@@ -1,5 +1,10 @@
 """Test fixtures: a throwaway migrated database per test, a small question
-bank (tests/fixtures/bank), and helpers to create and log in users."""
+bank (tests/fixtures/bank), and helpers to create and log in users.
+
+Tests run on a per-test SQLite file by default. Set TEST_DATABASE_URL to run
+them on PostgreSQL instead; its database name must contain "test" because
+every test drops and recreates all tables there.
+"""
 
 from __future__ import annotations
 
@@ -9,6 +14,8 @@ import pytest
 from flask import g
 from flask.testing import FlaskClient
 from flask_migrate import upgrade
+from sqlalchemy import text
+from sqlalchemy.engine import make_url
 
 from app import create_app
 from extensions import db
@@ -16,6 +23,17 @@ from ratelimit import limiter
 
 FIXTURE_BANK = os.path.join(os.path.dirname(__file__), "fixtures", "bank")
 PASSWORD = "secret-pass"
+TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL", "")
+
+
+def pytest_sessionstart(session):
+    """Refuse to wipe a database that is not clearly a test database."""
+    if TEST_DATABASE_URL and "test" not in (make_url(TEST_DATABASE_URL).database or ""):
+        pytest.exit(
+            'TEST_DATABASE_URL must name a database containing "test": '
+            "the tests drop every table in it.",
+            returncode=2,
+        )
 
 
 class FreshUserClient(FlaskClient):
@@ -34,7 +52,7 @@ class FreshUserClient(FlaskClient):
 @pytest.fixture
 def app(tmp_path):
     application = create_app({
-        "SQLALCHEMY_DATABASE_URI": f"sqlite:///{tmp_path / 'test.db'}",
+        "SQLALCHEMY_DATABASE_URI": TEST_DATABASE_URL or f"sqlite:///{tmp_path / 'test.db'}",
         "TESTING": True,
         "WTF_CSRF_ENABLED": False,
         "DATA_DIR": FIXTURE_BANK,
@@ -42,9 +60,16 @@ def app(tmp_path):
     application.test_client_class = FreshUserClient
     limiter.reset()
     with application.app_context():
+        if db.engine.dialect.name == "postgresql":
+            # The database outlives the test; start every test from nothing.
+            db.drop_all()
+            db.session.execute(text("DROP TABLE IF EXISTS alembic_version"))
+            db.session.commit()
         upgrade()
         yield application
         db.session.remove()
+        # Return the connections: every test builds its own app and engine.
+        db.engine.dispose()
 
 
 @pytest.fixture
