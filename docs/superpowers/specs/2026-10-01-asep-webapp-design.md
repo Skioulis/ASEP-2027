@@ -14,7 +14,7 @@ gives the owner an admin area to maintain the question bank and users.
 
 | Topic | Decision |
 |---|---|
-| Stack | Flask 3 + Flask-SQLAlchemy + Flask-Migrate + SQLite + gunicorn, mirroring `SimpleDiscography` |
+| Stack | Flask 3 + Flask-SQLAlchemy + Flask-Migrate + PostgreSQL in production (SQLite for local dev/tests) + gunicorn, mirroring `SimpleDiscography` |
 | Users | Open sign-up (username + password). Guests can quiz/browse; progress saves only when logged in |
 | Question source | The 2026 PDFs in `themata/` **replace** the old `.docx` bank |
 | Extraction | Done once, by hand-supervised extraction (not part of the app). Result lives in `data/` |

@@ -6,23 +6,21 @@ services:
     ports:
       # Only reachable from this machine; Tailscale Funnel publishes it.
       - "127.0.0.1:8000:8000"
+    # Secrets and settings live in env/ (created from the *.example files, never
+    # committed): SECRET_KEY and the admin account in app.env, the connection to
+    # the external PostgreSQL server in database.env.
+    env_file:
+      - path: env/app.env
+        required: true
+      - path: env/database.env
+        required: true
     environment:
-      ASEP_DB: /data/db/asep.db
-      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
-      # Admin account (re)created on every start. Set both in .env.
-      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       SESSION_COOKIE_SECURE: "1"
       WEB_CONCURRENCY: 3
       GUNICORN_THREADS: 8
-    volumes:
-      - db_data:/data/db
     restart: unless-stopped
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "5"
-
-volumes:
-  db_data:   # SQLite database (users, progress, edited questions)

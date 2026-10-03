@@ -2,8 +2,7 @@ FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    FLASK_APP=app \
-    ASEP_DB=/data/db/asep.db
+    FLASK_APP=app
 
 WORKDIR /app
 
@@ -12,12 +11,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Run unprivileged. /data/db is the mount point for the persistent volume
-# holding the SQLite database; a new named volume inherits its ownership.
-# Fixed UID keeps the existing db volume writable across rebuilds.
+# Run unprivileged. The database is an external PostgreSQL server, so the
+# container needs no writable data directory.
 RUN groupadd --system --gid 10001 app \
     && useradd --system --uid 10001 --gid app --no-create-home --shell /usr/sbin/nologin app \
-    && mkdir -p /data/db && chown app:app /data/db \
     && chmod +x docker/entrypoint.sh
 
 USER app

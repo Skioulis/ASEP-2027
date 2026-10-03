@@ -10,7 +10,9 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .env
-# local database — the container builds its own on the mounted volume
+# secrets: env_file passes them in at run time, they must never enter the image
+env/
+# local development database; production uses PostgreSQL
 *.db
 *.db-journal
 *.db-wal
