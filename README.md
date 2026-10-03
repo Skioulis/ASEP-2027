@@ -92,10 +92,11 @@ docker compose up -d --build
 
 ### `env/*.env` quoting
 
-Wrap values that contain `$` or `#` in single quotes, otherwise Compose treats
-`$` as a variable and may cut the value at `#`:
+Always wrap `PASSWORD` in single quotes. Wrap other values that contain `$` or `#` in single quotes, otherwise Compose treats
+`$` as a variable and may cut the value at `#`. Single quotes are literal for both Docker Compose and the shell:
 
 ```
+PASSWORD='your-password-here'
 ADMIN_PASSWORD='pa$$word#with-specials'
 ```
 
@@ -105,8 +106,9 @@ Users, progress and edited questions live in your PostgreSQL database. Dump it
 from the host (needs `pg_dump` 18 or newer, as new as the server):
 
 ```bash
+mkdir -p ~/asep-backups
 set -a; . env/database.env; set +a
-PGPASSWORD="$PASSWORD" pg_dump -h "$HOST" -p "$PORT" -U "$ADMIN" -Fc "$DATABASE" > asep-$(date +%F).dump
+PGPASSWORD="$PASSWORD" pg_dump -h "$HOST" -p "$PORT" -U "$ADMIN" -Fc "$DATABASE" > ~/asep-backups/asep-$(date +%F).dump
 ```
 
 Keep the dump somewhere safe: it contains every user's password hash. Run these
@@ -121,7 +123,7 @@ existing tables first:
 ```bash
 docker compose stop
 set -a; . env/database.env; set +a
-PGPASSWORD="$PASSWORD" pg_restore --clean --if-exists -h "$HOST" -p "$PORT" -U "$ADMIN" -d "$DATABASE" asep-YYYY-MM-DD.dump
+PGPASSWORD="$PASSWORD" pg_restore --clean --if-exists -h "$HOST" -p "$PORT" -U "$ADMIN" -d "$DATABASE" ~/asep-backups/asep-YYYY-MM-DD.dump
 docker compose start
 ```
 

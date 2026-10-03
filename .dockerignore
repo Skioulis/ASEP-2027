@@ -17,6 +17,9 @@ env/
 *.db-journal
 *.db-wal
 *.db-shm
+# database backups contain password hashes and must never enter the image
+*.dump
+*.sql.gz
 # source PDFs and design docs are not needed at runtime
 themata/
 docs/
