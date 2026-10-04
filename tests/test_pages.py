@@ -10,6 +10,12 @@ def test_index_page_has_app_shell(client, bank_loaded):
     assert 'id="poolFilter"' not in html       # pools only for logged-in users
 
 
+def test_index_links_to_the_official_asep_register(client, bank_loaded):
+    html = client.get("/").get_data(as_text=True)
+    assert 'href="https://info.asep.gr/mitroo-thematon-gnoseon"' in html
+    assert 'target="_blank" rel="noopener"' in html
+
+
 def test_index_shows_pool_filter_when_logged_in(user_client, bank_loaded):
     html = user_client.get("/").get_data(as_text=True)
     assert 'id="poolFilter"' in html
