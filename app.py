@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 
 from collections.abc import Mapping
@@ -25,6 +26,11 @@ def localtime(value: datetime | None, fmt: str = "%d/%m/%Y %H:%M") -> str:
     if value.tzinfo is None:
         value = value.replace(tzinfo=timezone.utc)
     return value.astimezone(ATHENS).strftime(fmt)
+
+
+def _json_dumps(value: object) -> str:
+    """Serialize JSON columns (question options) as readable UTF-8 Greek, not \\u escapes."""
+    return json.dumps(value, ensure_ascii=False)
 
 
 def database_uri(environ: Mapping[str, str]) -> str:
@@ -91,9 +97,9 @@ def create_app(config: dict | None = None) -> Flask:
     if "SQLALCHEMY_ENGINE_OPTIONS" not in app.config:
         app.config["SQLALCHEMY_ENGINE_OPTIONS"] = (
             # Wait up to 15s on a locked SQLite file (several gunicorn workers).
-            {"connect_args": {"timeout": 15}} if is_sqlite
+            {"connect_args": {"timeout": 15}, "json_serializer": _json_dumps} if is_sqlite
             # Drop dead connections after a database restart; recycle idle ones.
-            else {"pool_pre_ping": True, "pool_recycle": 1800}
+            else {"pool_pre_ping": True, "pool_recycle": 1800, "json_serializer": _json_dumps}
         )
 
     # Tailscale Funnel terminates TLS and proxies one hop to the container.

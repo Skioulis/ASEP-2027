@@ -61,13 +61,15 @@ def test_production_refuses_sqlite(monkeypatch, tmp_path):
 def test_engine_options_follow_the_final_database(monkeypatch, tmp_path):
     sqlite_uri = f"sqlite:///{tmp_path / 'dev.db'}"
     assert create_app({"SQLALCHEMY_DATABASE_URI": sqlite_uri}).config[
-        "SQLALCHEMY_ENGINE_OPTIONS"] == {"connect_args": {"timeout": 15}}
+        "SQLALCHEMY_ENGINE_OPTIONS"] == {"connect_args": {"timeout": 15},
+                                       "json_serializer": app_module._json_dumps}
     # The options depend on the URI after the override, not the environment.
     monkeypatch.setenv("DATABASE_URL", PG_URI)
     assert create_app({"SQLALCHEMY_DATABASE_URI": sqlite_uri}).config[
-        "SQLALCHEMY_ENGINE_OPTIONS"] == {"connect_args": {"timeout": 15}}
+        "SQLALCHEMY_ENGINE_OPTIONS"] == {"connect_args": {"timeout": 15},
+                                       "json_serializer": app_module._json_dumps}
     assert create_app().config["SQLALCHEMY_ENGINE_OPTIONS"] == {
-        "pool_pre_ping": True, "pool_recycle": 1800}
+        "pool_pre_ping": True, "pool_recycle": 1800, "json_serializer": app_module._json_dumps}
     # An override that sets its own engine options wins.
     custom = {"pool_size": 2}
     assert create_app({"SQLALCHEMY_ENGINE_OPTIONS": custom}).config[
