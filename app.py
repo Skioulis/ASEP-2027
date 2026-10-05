@@ -33,6 +33,14 @@ def _json_dumps(value: object) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
+def duration(ms: int | None) -> str:
+    """Jinja filter: milliseconds as m:ss (e.g. 125400 → "2:05"); None → "—"."""
+    if ms is None:
+        return "—"
+    minutes, seconds = divmod(round(ms / 1000), 60)
+    return f"{minutes}:{seconds:02d}"
+
+
 def database_uri(environ: Mapping[str, str]) -> str:
     """Pick the SQLAlchemy database URL from the environment.
 
@@ -124,6 +132,7 @@ def create_app(config: dict | None = None) -> Flask:
         app.register_blueprint(blueprint)
     register_cli(app)
     app.add_template_filter(localtime)
+    app.add_template_filter(duration)
 
     @app.after_request
     def security_headers(response):

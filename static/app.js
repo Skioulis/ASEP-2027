@@ -35,6 +35,16 @@ let quizSet = [];
 let quizIndex = 0;
 let quizAnswers = {};     // question id → chosen option index
 
+// Quiz timing: one minute per question (25 questions → 25:00). A question's own
+// time runs only while it is on screen and still unanswered; revisits add up.
+const MS_PER_QUESTION = 60 * 1000;
+let quizTimes = {};       // question id → ms spent on it before answering
+let viewStartedAt = null; // performance.now() when the current unanswered question appeared
+let quizStartedAt = 0;
+let quizUsedMs = 0;       // time used when the quiz ended
+let quizTimedOut = false;
+let quizTimer = null;     // countdown interval
+
 // Browse state
 let browse = { page: 1, pages: 1, total: 0, items: [] };
 let browseChoice = {};    // question id → chosen index, or -1 when only revealed
@@ -60,12 +70,13 @@ async function api(path, options = {}) {
   return body;
 }
 
-function recordAttempt(q, chosen, mode) {
+// timeMs: time spent on the question (quiz mode); omitted for browse answers.
+function recordAttempt(q, chosen, mode, timeMs) {
   if (!LOGGED_IN) return;
   api('/api/attempts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
-    body: JSON.stringify({ question_id: q.id, chosen, mode }),
+    body: JSON.stringify({ question_id: q.id, chosen, mode, time_ms: timeMs }),
   }).catch(err => console.warn('Η απάντηση δεν αποθηκεύτηκε:', err.message));
 }
 
@@ -133,6 +144,7 @@ function showMessage(html, kind = 'danger') {
 
 // ── QUIZ MODE ─────────────────────────────────────────────────────────────────
 async function startQuiz() {
+  stopQuizTimer();
   const pool = elPoolFilter ? elPoolFilter.value : 'all';
   showSection('loading');
   let data;
@@ -156,8 +168,50 @@ async function startQuiz() {
   quizSet = data.items.map(toQuestion);
   quizIndex = 0;
   quizAnswers = {};
+  quizTimes = {};
+  quizTimedOut = false;
+  quizStartedAt = performance.now();
+  quizTimer = setInterval(tickQuizClock, 250);
   showSection('quiz');
   renderQuizQuestion();
+}
+
+function quizLimitMs() {
+  return quizSet.length * MS_PER_QUESTION;
+}
+
+// Abandons the running quiz clock (new quiz, or leaving for browse mode).
+function stopQuizTimer() {
+  clearInterval(quizTimer);
+  quizTimer = null;
+  viewStartedAt = null;
+}
+
+// Adds the time the current question has been on screen to its total.
+function pauseQuestionClock() {
+  if (viewStartedAt === null) return;
+  const q = quizSet[quizIndex];
+  quizTimes[q.id] = (quizTimes[q.id] || 0) + performance.now() - viewStartedAt;
+  viewStartedAt = null;
+}
+
+function tickQuizClock() {
+  const remaining = quizLimitMs() - (performance.now() - quizStartedAt);
+  if (remaining <= 0) { finishQuiz(true); return; }
+  const el = document.getElementById('quizClock');
+  if (!el) return;
+  el.textContent = fmtClock(remaining);
+  el.className = 'badge ' + (remaining < 60 * 1000 ? 'bg-danger'
+    : remaining < 5 * 60 * 1000 ? 'bg-warning text-dark' : 'bg-light text-dark border');
+}
+
+function finishQuiz(timedOut) {
+  pauseQuestionClock();
+  clearInterval(quizTimer);
+  quizTimer = null;
+  quizUsedMs = Math.min(performance.now() - quizStartedAt, quizLimitMs());
+  quizTimedOut = timedOut;
+  renderQuizResults();
 }
 
 function renderQuizQuestion() {
@@ -191,7 +245,10 @@ function renderQuizQuestion() {
     <div class="mb-3">
       <div class="d-flex justify-content-between align-items-center mb-1">
         <small class="text-muted">Ερώτηση ${quizIndex + 1} / ${total}</small>
-        <small class="text-muted">${pct}%</small>
+        <span class="d-flex align-items-center gap-2">
+          <small class="text-muted">${pct}%</small>
+          <span title="Υπολειπόμενος χρόνος"><i class="fas fa-stopwatch text-muted me-1"></i><span id="quizClock" class="badge bg-light text-dark border"></span></span>
+        </span>
       </div>
       <div class="progress progress-bar-quiz">
         <div class="progress-bar" style="width:${pct}%"></div>
@@ -217,22 +274,48 @@ function renderQuizQuestion() {
         </div>
       </div>
     </div>`;
+  if (!answered && viewStartedAt === null) viewStartedAt = performance.now();
+  tickQuizClock();
 }
 
 function chooseAnswer(i) {
   const q = quizSet[quizIndex];
-  if (quizAnswers[q.id] !== undefined) return;
+  if (quizAnswers[q.id] !== undefined || quizTimer === null) return;
+  pauseQuestionClock();
   quizAnswers[q.id] = i;
-  recordAttempt(q, i, 'quiz');
+  recordAttempt(q, i, 'quiz', Math.round(quizTimes[q.id] || 0));
   renderQuizQuestion();
 }
 
 function quizNav(dir) {
   const next = quizIndex + dir;
   if (next < 0) return;
-  if (next >= quizSet.length) { renderQuizResults(); return; }
+  pauseQuestionClock();
+  if (next >= quizSet.length) { finishQuiz(false); return; }
   quizIndex = next;
   renderQuizQuestion();
+}
+
+// Time statistics for the finished quiz (answered questions only, except max).
+function quizTimeStats() {
+  const t = q => quizTimes[q.id] || 0;
+  const answered = quizSet.filter(q => quizAnswers[q.id] !== undefined);
+  const avg = list => (list.length ? list.reduce((sum, q) => sum + t(q), 0) / list.length : null);
+  const byTime = [...answered].sort((a, b) => t(a) - t(b));
+  return {
+    answered: answered.length,
+    avg: avg(answered),
+    avgCorrect: avg(answered.filter(q => quizAnswers[q.id] === q.correct)),
+    avgWrong: avg(answered.filter(q => quizAnswers[q.id] !== q.correct)),
+    fastest: byTime[0],
+    slowest: byTime[byTime.length - 1],
+    max: Math.max(1, ...quizSet.map(t)),
+  };
+}
+
+function statTile(value, label) {
+  return `<div class="col-6 col-md-3"><div class="border rounded p-2 h-100">
+    <div class="fs-4 fw-bold">${value}</div><small class="text-muted">${label}</small></div></div>`;
 }
 
 function renderQuizResults() {
@@ -240,9 +323,30 @@ function renderQuizResults() {
   const correct = quizSet.filter(q => quizAnswers[q.id] === q.correct).length;
   const pct = Math.round((correct / total) * 100);
   const color = pct >= 80 ? '#198754' : pct >= 60 ? '#0d6efd' : pct >= 40 ? '#fd7e14' : '#dc3545';
+  const time = quizTimeStats();
+  const qNo = q => quizSet.indexOf(q) + 1;
+  const timeHtml = `
+    ${quizTimedOut ? `<div class="alert alert-warning text-start"><i class="fas fa-hourglass-end me-2"></i>
+      Ο χρόνος έληξε. Οι ερωτήσεις που δεν απαντήσατε μετράνε ως αναπάντητες.</div>` : ''}
+    <div class="row g-2 mb-2">
+      ${statTile(fmtDuration(quizUsedMs), `Χρόνος (από ${fmtDuration(quizLimitMs())})`)}
+      ${statTile(time.avg === null ? '—' : fmtDuration(time.avg), 'Μέσος χρόνος ανά ερώτηση')}
+      ${statTile(time.fastest ? fmtDuration(quizTimes[time.fastest.id] || 0) : '—',
+                 time.fastest ? `Ταχύτερη: ερ. ${qNo(time.fastest)}` : 'Ταχύτερη')}
+      ${statTile(time.slowest ? fmtDuration(quizTimes[time.slowest.id] || 0) : '—',
+                 time.slowest ? `Πιο αργή: ερ. ${qNo(time.slowest)}` : 'Πιο αργή')}
+    </div>
+    <p class="small text-muted mb-4">
+      <i class="fas fa-check text-success me-1"></i>Μ.Ο. στις σωστές: ${time.avgCorrect === null ? '—' : fmtDuration(time.avgCorrect)}
+      &nbsp;·&nbsp;
+      <i class="fas fa-times text-danger me-1"></i>Μ.Ο. στις λάθος: ${time.avgWrong === null ? '—' : fmtDuration(time.avgWrong)}
+      &nbsp;·&nbsp; Απαντήσατε ${time.answered} / ${total}
+    </p>`;
 
   const reviewRows = quizSet.map((q, i) => {
     const chosen = quizAnswers[q.id];
+    const ms = quizTimes[q.id] || 0;
+    const outcome = chosen === undefined ? 'skip' : chosen === q.correct ? 'ok' : 'bad';
     const icon = chosen === undefined
       ? '<i class="fas fa-minus text-muted"></i>'
       : chosen === q.correct
@@ -254,6 +358,12 @@ function renderQuizResults() {
       <td>${chosen === undefined ? '—' : LETTERS[chosen]}</td>
       <td>${LETTERS[q.correct]}</td>
       <td class="text-center">${icon}</td>
+      <td class="time-cell" title="Ερ. ${i + 1}: ${fmtDuration(ms)}">
+        <div class="d-flex align-items-center gap-2">
+          <div class="time-track"><div class="time-fill time-${outcome}" style="width:${(100 * ms / time.max).toFixed(1)}%"></div></div>
+          <span class="small text-nowrap">${fmtDuration(ms)}</span>
+        </div>
+      </td>
     </tr>`;
   }).join('');
 
@@ -270,6 +380,7 @@ function renderQuizResults() {
         <div class="progress mb-4" style="height:14px; max-width:400px; margin:0 auto;">
           <div class="progress-bar" style="width:${pct}%; background:${color}"></div>
         </div>
+        ${timeHtml}
         <div class="d-flex gap-2 justify-content-center flex-wrap">
           <button class="btn btn-primary" onclick="startQuiz()"><i class="fas fa-redo me-2"></i>Νέο Quiz</button>
           <button class="btn btn-outline-secondary" onclick="renderReview()"><i class="fas fa-search me-2"></i>Ανασκόπηση Απαντήσεων</button>
@@ -282,7 +393,7 @@ function renderQuizResults() {
       <div class="table-responsive">
         <table class="table table-sm table-hover mb-0">
           <thead class="table-light">
-            <tr><th>#</th><th>Ερώτηση</th><th>Απάντησα</th><th>Σωστή</th><th></th></tr>
+            <tr><th>#</th><th>Ερώτηση</th><th>Απάντησα</th><th>Σωστή</th><th></th><th>Χρόνος</th></tr>
           </thead>
           <tbody>${reviewRows}</tbody>
         </table>
@@ -314,6 +425,7 @@ function renderReview() {
         <span class="badge bg-secondary">#${q.n}</span>
         <span class="badge bg-light text-dark">Ερ. ${i + 1}</span>
         ${badge}
+        <span class="badge bg-light text-dark ms-auto"><i class="fas fa-stopwatch me-1"></i>${fmtDuration(quizTimes[q.id] || 0)}</span>
       </div>
       <div class="card-body">
         <div class="card-title h6">${questionHtml(q.question)}</div>
@@ -337,6 +449,7 @@ function renderReview() {
 
 // ── BROWSE MODE ───────────────────────────────────────────────────────────────
 async function startBrowse(page) {
+  stopQuizTimer();
   showSection('loading');
   let data;
   try {
@@ -461,6 +574,17 @@ function tableHtml(rows) {
   const body = rows.slice(hasHeader ? 2 : 0).filter(r => !TABLE_SEPARATOR.test(r))
     .map(r => `<tr>${cells(r).map(c => `<td>${c}</td>`).join('')}</tr>`).join('');
   return `<div class="table-responsive"><table class="table table-bordered table-sm qtable">${head}<tbody>${body}</tbody></table></div>`;
+}
+
+// Durations: m:ss (e.g. 2:05). Countdown: mm:ss, rounded up so it never shows 00:00 early.
+function fmtDuration(ms) {
+  const s = Math.round(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+function fmtClock(ms) {
+  const s = Math.ceil(ms / 1000);
+  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
 
 function escHtml(str) {

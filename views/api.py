@@ -21,11 +21,17 @@ bp = Blueprint("api", __name__, url_prefix="/api")
 
 PAGE_SIZE = 10
 POOLS = ("all", "unseen", "wrong")
+# Longest time one answer may report (a 100-question quiz lasts 100 minutes).
+MAX_TIME_MS = 2 * 60 * 60 * 1000
 MODES = ("quiz", "browse")
 
 
 def _fail(status: int, message: str):
     abort(make_response(jsonify(error=message), status))
+
+
+def _is_int(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
 
 
 def _require_login() -> None:
@@ -100,12 +106,13 @@ def record_attempt():
     question = db.session.get(Question, qid) if isinstance(qid, str) else None
     if question is None:
         _fail(404, "Άγνωστη ερώτηση.")
-    chosen, mode = data.get("chosen"), data.get("mode", "quiz")
-    valid_choice = isinstance(chosen, int) and not isinstance(chosen, bool) and 0 <= chosen <= 3
-    if not valid_choice or mode not in MODES:
+    chosen, mode, time_ms = data.get("chosen"), data.get("mode", "quiz"), data.get("time_ms")
+    valid_choice = _is_int(chosen) and 0 <= chosen <= 3
+    valid_time = time_ms is None or (_is_int(time_ms) and 0 <= time_ms <= MAX_TIME_MS)
+    if not valid_choice or not valid_time or mode not in MODES:
         _fail(400, "Μη έγκυρη απάντηση.")
     attempt = Attempt(user_id=current_user.id, question_id=question.id, chosen=chosen,
-                      is_correct=chosen == question.correct, mode=mode)
+                      is_correct=chosen == question.correct, mode=mode, time_ms=time_ms)
     db.session.add(attempt)
     db.session.commit()
     return jsonify(is_correct=attempt.is_correct, correct=question.correct), 201

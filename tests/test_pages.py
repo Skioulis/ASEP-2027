@@ -42,3 +42,12 @@ def test_unknown_page_uses_error_template(client):
     response = client.get("/nope")
     assert response.status_code == 404
     assert "Η σελίδα δεν βρέθηκε" in response.get_data(as_text=True)
+
+
+def test_stats_page_shows_average_answer_time(user_client, bank_loaded, user):
+    db.session.add(Attempt(user_id=user.id, question_id="alpha-1", chosen=1, is_correct=True,
+                           mode="quiz", time_ms=42_000))
+    db.session.commit()
+    html = user_client.get("/stats").get_data(as_text=True)
+    assert "Μ.Ο. χρόνου" in html
+    assert "0:42" in html

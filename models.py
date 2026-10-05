@@ -102,6 +102,8 @@ class Attempt(db.Model):
     chosen: Mapped[int]
     is_correct: Mapped[bool]
     mode: Mapped[str] = mapped_column(String(10))  # "quiz" | "browse"
+    # Time spent on the question before answering (quiz mode only; None in browse).
+    time_ms: Mapped[int | None]
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
     user: Mapped[User] = relationship(back_populates="attempts")

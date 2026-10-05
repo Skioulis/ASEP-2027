@@ -146,3 +146,11 @@ def test_sqlite_fallback_honours_asep_db():
     default = app_module.database_uri({})
     assert default == "sqlite:///" + os.path.join(app_module.BASE_DIR, "asep.db")
     assert app_module.database_uri({"ASEP_DB": ""}) == default
+
+
+def test_duration_filter_formats_milliseconds():
+    assert app_module.duration(0) == "0:00"
+    assert app_module.duration(42_000) == "0:42"
+    assert app_module.duration(125_400) == "2:05"
+    assert app_module.duration(3_600_000) == "60:00"
+    assert app_module.duration(None) == "—"

@@ -160,3 +160,23 @@ def test_attempts_need_a_csrf_token_end_to_end(csrf_app):
     assert client.post("/api/attempts", json=payload).status_code == 400
     response = client.post("/api/attempts", json=payload, headers={"X-CSRFToken": header_token})
     assert response.status_code == 201
+
+
+def test_attempt_records_time_spent(user_client, bank_loaded):
+    response = user_client.post("/api/attempts", json={"question_id": "alpha-1", "chosen": 1,
+                                                        "mode": "quiz", "time_ms": 4200})
+    assert response.status_code == 201
+    assert db.session.scalar(select(Attempt)).time_ms == 4200
+
+
+def test_attempt_time_is_optional(user_client, bank_loaded):
+    assert _answer(user_client, "alpha-1", 1, mode="browse").status_code == 201
+    assert db.session.scalar(select(Attempt)).time_ms is None
+
+
+def test_attempt_rejects_bad_time(user_client, bank_loaded):
+    for bad in (-1, "4200", True, 1.5, 7_200_001):
+        response = user_client.post("/api/attempts", json={"question_id": "alpha-1", "chosen": 1,
+                                                            "time_ms": bad})
+        assert response.status_code == 400, bad
+    assert db.session.scalar(select(Attempt)) is None

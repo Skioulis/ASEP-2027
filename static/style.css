@@ -79,3 +79,12 @@ footer {
   padding: 2rem 0 1.5rem;
 }
 footer a { color: #cfe2ff; }
+
+/* Per-question time bars in the quiz summary. One series, so no legend; the
+   icon column next to it says correct/wrong, so colour is never the only cue. */
+.time-cell { min-width: 9rem; }
+.time-track { flex: 1; min-width: 4rem; height: 8px; background: #e9ecef; border-radius: 4px; overflow: hidden; }
+.time-fill { height: 100%; border-radius: 4px; }
+.time-ok   { background: #198754; }
+.time-bad  { background: #dc3545; }
+.time-skip { background: #adb5bd; }
