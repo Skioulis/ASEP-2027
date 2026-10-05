@@ -316,6 +316,7 @@ function chooseAnswer(i) {
 function quizNav(dir) {
   const next = quizIndex + dir;
   if (next < 0) return;
+  if (performance.now() >= quizDeadline()) { finishQuiz(true); return; }
   pauseQuestionClock();
   if (next >= quizSet.length) { finishQuiz(false); return; }
   quizIndex = next;
