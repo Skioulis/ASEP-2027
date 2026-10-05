@@ -11,6 +11,8 @@
     <div class="mb-3">
       <label class="form-label" for="text">Κείμενο ερώτησης</label>
       <textarea class="form-control" id="text" name="text" rows="4" required>{{ values.text }}</textarea>
+      <div class="form-text">Πίνακας: γραμμές όπως <code>| Χώρα Α | 0,38 |</code>· μια γραμμή
+        <code>|---|---|</code> κάτω από την πρώτη την κάνει επικεφαλίδα.</div>
     </div>
     {% for i in range(4) %}
       <div class="input-group mb-2">

@@ -1,4 +1,5 @@
 import os
+import re
 
 import pytest
 from sqlalchemy import func, select
@@ -97,3 +98,35 @@ def test_seed_cli_command(app):
     runner = app.test_cli_runner()
     assert "Seeded 5 questions." in runner.invoke(args=["seed"]).output
     assert "Bank already loaded; nothing to do." in runner.invoke(args=["seed"]).output
+
+
+SEPARATOR = re.compile(r"^\|(\s*:?-{3,}:?\s*\|)+$")
+
+
+def _table_blocks(text):
+    """Runs of consecutive lines that start with "|" (same rule as static/app.js)."""
+    blocks, current = [], []
+    for line in text.split("\n"):
+        if line.strip().startswith("|"):
+            current.append(line.strip())
+        elif current:
+            blocks.append(current)
+            current = []
+    if current:
+        blocks.append(current)
+    return blocks
+
+
+def test_real_bank_tables_are_well_formed():
+    tables = {}
+    for category in bank.read_bank(REAL_DATA):
+        for item in category["items"]:
+            for block in _table_blocks(item["q"]):
+                rows = [r for r in block if not SEPARATOR.match(r)]
+                widths = {len(r.strip("|").split("|")) for r in rows}
+                assert all(r.endswith("|") for r in block), item["id"]
+                assert len(widths) == 1 and widths.pop() >= 2, item["id"]
+                tables[item["id"]] = block
+    assert sorted(tables) == ["oikonomikes-epistimes-150", "oikonomikes-epistimes-197"]
+    assert SEPARATOR.match(tables["oikonomikes-epistimes-150"][1])       # header row
+    assert not any(SEPARATOR.match(r) for r in tables["oikonomikes-epistimes-197"])

@@ -202,7 +202,7 @@ function renderQuizQuestion() {
         <span class="badge bg-secondary ms-1">#${q.n}</span>
       </div>
       <div class="card-body">
-        <h5 class="card-title mb-4 qtext">${escHtml(q.question)}</h5>
+        <div class="card-title h5 mb-4">${questionHtml(q.question)}</div>
         ${optionsHtml}
         ${feedbackHtml}
         <div class="d-flex justify-content-between mt-4">
@@ -316,7 +316,7 @@ function renderReview() {
         ${badge}
       </div>
       <div class="card-body">
-        <h6 class="card-title qtext">${escHtml(q.question)}</h6>
+        <div class="card-title h6">${questionHtml(q.question)}</div>
         <div class="list-group mt-2">${opts}</div>
       </div>
     </div>`;
@@ -380,7 +380,7 @@ function browseCard(q) {
       ${status}
     </div>
     <div class="card-body">
-      <h6 class="card-title mb-3 qtext">${escHtml(q.question)}</h6>
+      <div class="card-title h6 mb-3">${questionHtml(q.question)}</div>
       <div>${opts}</div>
       ${done ? '' : `<button class="btn btn-sm btn-outline-primary mt-2" onclick="browseAnswer(${escHtml(JSON.stringify(q.id))}, -1)">
           <i class="fas fa-eye me-1"></i>Εμφάνιση σωστής απάντησης</button>`}
@@ -436,6 +436,33 @@ function pageItem(label, page, disabled = false, active = false) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+// Question text may contain table rows ("| a | b |"); a "|---|---|" row under the
+// first one makes it a header. All other text keeps its line breaks.
+const TABLE_SEPARATOR = /^\|(\s*:?-{3,}:?\s*\|)+$/;
+
+function questionHtml(text) {
+  const blocks = [];
+  for (const line of String(text).split('\n')) {
+    const isRow = line.trim().startsWith('|');
+    const last = blocks[blocks.length - 1];
+    if (last && last.isTable === isRow) last.lines.push(line.trim());
+    else blocks.push({ isTable: isRow, lines: [line.trim()] });
+  }
+  return blocks.map(b => (b.isTable
+    ? tableHtml(b.lines)
+    : `<div class="qtext">${escHtml(b.lines.join('\n'))}</div>`)).join('');
+}
+
+function tableHtml(rows) {
+  const cells = row => row.replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => escHtml(c.trim()));
+  const hasHeader = rows.length > 1 && TABLE_SEPARATOR.test(rows[1]);
+  const head = hasHeader
+    ? `<thead><tr>${cells(rows[0]).map(c => `<th>${c}</th>`).join('')}</tr></thead>` : '';
+  const body = rows.slice(hasHeader ? 2 : 0).filter(r => !TABLE_SEPARATOR.test(r))
+    .map(r => `<tr>${cells(r).map(c => `<td>${c}</td>`).join('')}</tr>`).join('');
+  return `<div class="table-responsive"><table class="table table-bordered table-sm qtable">${head}<tbody>${body}</tbody></table></div>`;
+}
+
 function escHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')

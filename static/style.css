@@ -20,8 +20,13 @@ footer { margin-top: auto; }
   margin-bottom: 1.25rem;
 }
 
-/* Question text may contain line breaks (tables, lists, poems). */
+/* Question text may contain line breaks (lists, poems). */
 .qtext { white-space: pre-line; }
+
+/* Data tables inside question text (questionHtml in app.js). */
+.qtable { width: auto; max-width: 100%; margin: .5rem 0 .75rem; font-size: 1rem; font-weight: 400; }
+.qtable th { background: #f1f3f5; font-weight: 600; vertical-align: middle; }
+.qtable th, .qtable td { padding: .35rem .9rem; }
 
 /* Browse mode */
 .answer-btn {
