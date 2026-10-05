@@ -152,5 +152,6 @@ def test_duration_filter_formats_milliseconds():
     assert app_module.duration(0) == "0:00"
     assert app_module.duration(42_000) == "0:42"
     assert app_module.duration(125_400) == "2:05"
+    assert app_module.duration(2_500) == "0:03"      # half up, same as the quiz screen
     assert app_module.duration(3_600_000) == "60:00"
     assert app_module.duration(None) == "—"

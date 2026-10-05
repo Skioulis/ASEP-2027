@@ -111,6 +111,8 @@ def record_attempt():
     valid_time = time_ms is None or (_is_int(time_ms) and 0 <= time_ms <= MAX_TIME_MS)
     if not valid_choice or not valid_time or mode not in MODES:
         _fail(400, "Μη έγκυρη απάντηση.")
+    if mode != "quiz":
+        time_ms = None  # only timed quizzes record how long an answer took
     attempt = Attempt(user_id=current_user.id, question_id=question.id, chosen=chosen,
                       is_correct=chosen == question.correct, mode=mode, time_ms=time_ms)
     db.session.add(attempt)

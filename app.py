@@ -37,7 +37,8 @@ def duration(ms: int | None) -> str:
     """Jinja filter: milliseconds as m:ss (e.g. 125400 → "2:05"); None → "—"."""
     if ms is None:
         return "—"
-    minutes, seconds = divmod(round(ms / 1000), 60)
+    # Round half up, like Math.round in static/app.js (Python's round() is half-even).
+    minutes, seconds = divmod(int(ms / 1000 + 0.5), 60)
     return f"{minutes}:{seconds:02d}"
 
 

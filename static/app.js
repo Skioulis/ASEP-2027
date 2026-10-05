@@ -44,6 +44,9 @@ let quizStartedAt = 0;
 let quizUsedMs = 0;       // time used when the quiz ended
 let quizTimedOut = false;
 let quizTimer = null;     // countdown interval
+// Bumped whenever a quiz or browse load starts, so a slower, older response
+// can't take over the screen (or start a second countdown) after a newer click.
+let loadRun = 0;
 
 // Browse state
 let browse = { page: 1, pages: 1, total: 0, items: [] };
@@ -145,12 +148,15 @@ function showMessage(html, kind = 'danger') {
 // ── QUIZ MODE ─────────────────────────────────────────────────────────────────
 async function startQuiz() {
   stopQuizTimer();
+  const run = ++loadRun;
   const pool = elPoolFilter ? elPoolFilter.value : 'all';
   showSection('loading');
   let data;
   try {
     data = await api('/api/quiz?' + selectedParams({ size: QUIZ_SIZE, pool }));
+    if (run !== loadRun) return;
   } catch (e) {
+    if (run !== loadRun) return;
     showSection('welcome');
     showMessage(`Αδυναμία φόρτωσης quiz: ${escHtml(e.message)}`);
     return;
@@ -187,16 +193,34 @@ function stopQuizTimer() {
   viewStartedAt = null;
 }
 
-// Adds the time the current question has been on screen to its total.
+function quizDeadline() {
+  return quizStartedAt + quizLimitMs();
+}
+
+// Adds the time the current question has been on screen to its total; time
+// after the deadline never counts (background tabs can fire the timer late).
 function pauseQuestionClock() {
   if (viewStartedAt === null) return;
   const q = quizSet[quizIndex];
-  quizTimes[q.id] = (quizTimes[q.id] || 0) + performance.now() - viewStartedAt;
+  const now = Math.min(performance.now(), quizDeadline());
+  quizTimes[q.id] = (quizTimes[q.id] || 0) + Math.max(0, now - viewStartedAt);
   viewStartedAt = null;
 }
 
+// A question's clock only runs while the page is visible; the countdown doesn't stop.
+document.addEventListener('visibilitychange', () => {
+  if (quizTimer === null) return;
+  if (document.hidden) {
+    pauseQuestionClock();
+  } else {
+    if (quizAnswers[quizSet[quizIndex].id] === undefined) viewStartedAt = performance.now();
+    tickQuizClock();
+  }
+});
+
 function tickQuizClock() {
-  const remaining = quizLimitMs() - (performance.now() - quizStartedAt);
+  if (quizTimer === null) return;
+  const remaining = quizDeadline() - performance.now();
   if (remaining <= 0) { finishQuiz(true); return; }
   const el = document.getElementById('quizClock');
   if (!el) return;
@@ -206,6 +230,7 @@ function tickQuizClock() {
 }
 
 function finishQuiz(timedOut) {
+  if (quizTimer === null) return;
   pauseQuestionClock();
   clearInterval(quizTimer);
   quizTimer = null;
@@ -281,6 +306,7 @@ function renderQuizQuestion() {
 function chooseAnswer(i) {
   const q = quizSet[quizIndex];
   if (quizAnswers[q.id] !== undefined || quizTimer === null) return;
+  if (performance.now() >= quizDeadline()) { finishQuiz(true); return; }
   pauseQuestionClock();
   quizAnswers[q.id] = i;
   recordAttempt(q, i, 'quiz', Math.round(quizTimes[q.id] || 0));
@@ -330,7 +356,7 @@ function renderQuizResults() {
       Ο χρόνος έληξε. Οι ερωτήσεις που δεν απαντήσατε μετράνε ως αναπάντητες.</div>` : ''}
     <div class="row g-2 mb-2">
       ${statTile(fmtDuration(quizUsedMs), `Χρόνος (από ${fmtDuration(quizLimitMs())})`)}
-      ${statTile(time.avg === null ? '—' : fmtDuration(time.avg), 'Μέσος χρόνος ανά ερώτηση')}
+      ${statTile(time.avg === null ? '—' : fmtDuration(time.avg), 'Μέσος χρόνος ανά απαντημένη ερώτηση')}
       ${statTile(time.fastest ? fmtDuration(quizTimes[time.fastest.id] || 0) : '—',
                  time.fastest ? `Ταχύτερη: ερ. ${qNo(time.fastest)}` : 'Ταχύτερη')}
       ${statTile(time.slowest ? fmtDuration(quizTimes[time.slowest.id] || 0) : '—',
@@ -450,11 +476,14 @@ function renderReview() {
 // ── BROWSE MODE ───────────────────────────────────────────────────────────────
 async function startBrowse(page) {
   stopQuizTimer();
+  const run = ++loadRun;
   showSection('loading');
   let data;
   try {
     data = await api('/api/questions?' + selectedParams({ page }));
+    if (run !== loadRun) return;
   } catch (e) {
+    if (run !== loadRun) return;
     showSection('welcome');
     showMessage(`Αδυναμία φόρτωσης ερωτήσεων: ${escHtml(e.message)}`);
     return;

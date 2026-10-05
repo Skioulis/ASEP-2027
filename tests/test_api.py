@@ -174,6 +174,21 @@ def test_attempt_time_is_optional(user_client, bank_loaded):
     assert db.session.scalar(select(Attempt)).time_ms is None
 
 
+def test_attempt_time_limits_are_inclusive(user_client, bank_loaded):
+    for ok in (0, 7_200_000):
+        response = user_client.post("/api/attempts", json={"question_id": "alpha-1", "chosen": 1,
+                                                            "mode": "quiz", "time_ms": ok})
+        assert response.status_code == 201, ok
+    assert sorted(a.time_ms for a in db.session.scalars(select(Attempt))) == [0, 7_200_000]
+
+
+def test_browse_answers_never_store_a_time(user_client, bank_loaded):
+    response = user_client.post("/api/attempts", json={"question_id": "alpha-1", "chosen": 1,
+                                                        "mode": "browse", "time_ms": 5000})
+    assert response.status_code == 201
+    assert db.session.scalar(select(Attempt)).time_ms is None
+
+
 def test_attempt_rejects_bad_time(user_client, bank_loaded):
     for bad in (-1, "4200", True, 1.5, 7_200_001):
         response = user_client.post("/api/attempts", json={"question_id": "alpha-1", "chosen": 1,
